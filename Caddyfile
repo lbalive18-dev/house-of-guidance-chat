@@ -1,0 +1,27 @@
+# House of Guidance Chat - production reverse proxy
+#
+# Caddy gets free, auto-renewing HTTPS certificates from Let's Encrypt with
+# zero manual steps - just point your domain's DNS at this server and set
+# APP_DOMAIN / API_DOMAIN below (via env substitution at deploy time).
+#
+# Usage: replace the placeholders or export APP_DOMAIN/API_DOMAIN before
+# running `docker compose -f docker-compose.prod.yml up -d`.
+
+{$APP_DOMAIN:chat.example.org} {
+    reverse_proxy frontend:80
+    encode gzip zstd
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
+
+{$API_DOMAIN:api.chat.example.org} {
+    reverse_proxy backend-nginx:80
+    encode gzip zstd
+}
+
+{$REVERB_DOMAIN:ws.chat.example.org} {
+    reverse_proxy reverb:8080
+}

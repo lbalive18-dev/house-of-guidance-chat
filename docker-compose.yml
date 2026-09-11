@@ -1,0 +1,168 @@
+name: house-of-guidance-chat
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hogchat-backend
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+      - backend-storage:/var/www/html/storage/app/public
+      - ./backend/docker/php/fpm-pool.conf:/usr/local/etc/php-fpm.d/zz-pool-overrides.conf
+    env_file:
+      - ./backend/.env
+    environment:
+      RUN_MIGRATIONS: "true"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - hogchat
+
+  queue:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hogchat-queue
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan queue:work --sleep=3 --tries=3
+    volumes:
+      - ./backend:/var/www/html
+      - backend-storage:/var/www/html/storage/app/public
+    env_file:
+      - ./backend/.env
+    environment:
+      REVERB_HOST: reverb
+    depends_on:
+      - backend
+    networks:
+      - hogchat
+
+  reverb:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hogchat-reverb
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/var/www/html
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - backend
+    networks:
+      - hogchat
+
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hogchat-scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    entrypoint: ["sh", "-c", "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"]
+    volumes:
+      - ./backend:/var/www/html
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - backend
+    networks:
+      - hogchat
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: hogchat-nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./backend:/var/www/html
+      - backend-storage:/var/www/html/storage/app/public
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend
+    networks:
+      - hogchat
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hogchat-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:8000
+    depends_on:
+      - nginx
+    networks:
+      - hogchat
+
+  mysql:
+    image: mysql:8.4
+    container_name: hogchat-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: house_of_guidance_chat
+      MYSQL_USER: hog_user
+      MYSQL_PASSWORD: hog_password
+      MYSQL_ROOT_PASSWORD: hog_root_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-phog_root_password"]
+      interval: 10s
+      timeout: 10s
+      retries: 90
+      start_period: 60s
+    networks:
+      - hogchat
+
+  redis:
+    image: redis:7-alpine
+    container_name: hogchat-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - hogchat
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: hogchat-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - hogchat
+
+networks:
+  hogchat:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  redis-data:
+  backend-storage:
+  frontend-node-modules:
