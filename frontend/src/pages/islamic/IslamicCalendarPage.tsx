@@ -58,9 +58,9 @@ export default function IslamicCalendarPage() {
           <p dir="rtl" className="font-arabic mt-1 text-gray-500 dark:text-gray-400">
             {hijriToday.day} {hijriToday.month.ar} {hijriToday.year}
           </p>
-          {hijriToday.holidays.length > 0 && (
+          {(hijriToday.holidays ?? []).length > 0 && (
             <p className="mt-2 text-xs font-medium text-secondary-600 dark:text-secondary-300">
-              {hijriToday.holidays.join(', ')}
+              {hijriToday.holidays?.join(', ')}
             </p>
           )}
         </div>
@@ -93,12 +93,12 @@ export default function IslamicCalendarPage() {
           {days.map((day) => {
             const gregorianDay = new Date(day.gregorian_date).getDate();
             const isToday = new Date(day.gregorian_date).toDateString() === today.toDateString();
-            const hasHoliday = day.holidays.length > 0;
+            const hasHoliday = (day.holidays ?? []).length > 0;
 
             return (
               <div
                 key={day.gregorian_date}
-                title={hasHoliday ? day.holidays.join(', ') : undefined}
+                title={hasHoliday ? (day.holidays ?? []).join(', ') : undefined}
                 className={`flex flex-col items-center rounded-lg px-1 py-2 text-center ${
                   isToday
                     ? 'bg-primary text-white'
