@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { getEcho } from '@/lib/echo';
+import { showMessageNotification } from '@/lib/nativeNotifications';
 import type { ChatMessage } from '@/types/chat';
 
 interface TypingPayload {
@@ -54,7 +55,7 @@ interface ConversationChannelHandlers {
 
 export function useConversationChannel(
   conversationId: number | undefined,
-  handlers: ConversationChannelHandlers
+  handlers: ConversationChannelHandlers,
 ) {
   const handlersRef = useRef(handlers);
   handlersRef.current = handlers;
@@ -66,8 +67,28 @@ export function useConversationChannel(
     const channel = echo.private(`conversation.${conversationId}`);
 
     channel
-      .listen('.message.sent', (payload: { message: ChatMessage }) => {
-        handlersRef.current.onMessageSent?.(payload.message);
+      .listen('.message.sent', async (payload: { message: ChatMessage }) => {
+        const message = payload.message;
+
+        handlersRef.current.onMessageSent?.(message);
+
+        if (document.visibilityState === 'hidden') {
+          const senderName = message.sender?.name || 'New message';
+          const body = message.body || 'You received a new message';
+
+          try {
+            await showMessageNotification(
+              senderName,
+              body,
+              conversationId,
+            );
+          } catch (error) {
+            console.error(
+              'Unable to show message notification:',
+              error,
+            );
+          }
+        }
       })
       .listen('.message.updated', (payload: { message: ChatMessage }) => {
         handlersRef.current.onMessageUpdated?.(payload.message);
@@ -75,18 +96,24 @@ export function useConversationChannel(
       .listen('.message.deleted', (payload: { message_id: number }) => {
         handlersRef.current.onMessageDeleted?.(payload);
       })
-      .listen('.message.reaction.updated', (payload: ReactionUpdatedPayload) => {
-        handlersRef.current.onReactionUpdated?.(payload);
-      })
+      .listen(
+        '.message.reaction.updated',
+        (payload: ReactionUpdatedPayload) => {
+          handlersRef.current.onReactionUpdated?.(payload);
+        },
+      )
       .listen('.user.typing', (payload: TypingPayload) => {
         handlersRef.current.onTyping?.(payload);
       })
       .listen('.conversation.read', (payload: ConversationReadPayload) => {
         handlersRef.current.onConversationRead?.(payload);
       })
-      .listen('.conversation.updated', (payload: ConversationUpdatedPayload) => {
-        handlersRef.current.onConversationUpdated?.(payload);
-      });
+      .listen(
+        '.conversation.updated',
+        (payload: ConversationUpdatedPayload) => {
+          handlersRef.current.onConversationUpdated?.(payload);
+        },
+      );
 
     return () => {
       echo.leave(`conversation.${conversationId}`);
