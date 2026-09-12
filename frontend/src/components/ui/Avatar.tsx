@@ -1,7 +1,7 @@
 import OnlineStatusDot from '@/components/ui/OnlineStatusDot';
 
 interface AvatarProps {
-  name: string;
+  name?: string | null;
   avatarUrl?: string | null;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showOnline?: boolean;
@@ -15,8 +15,8 @@ const sizeClasses: Record<NonNullable<AvatarProps['size']>, string> = {
   xl: 'h-24 w-24 text-2xl',
 };
 
-function initials(name: string): string {
-  return name
+function initials(name?: string | null): string {
+  return (name ?? 'U')
     .trim()
     .split(/\s+/)
     .slice(0, 2)
@@ -30,7 +30,7 @@ export default function Avatar({ name, avatarUrl, size = 'md', showOnline, isOnl
       {avatarUrl ? (
         <img
           src={avatarUrl}
-          alt={name}
+          alt={name ?? 'User'}
           className={`${sizeClasses[size]} rounded-full object-cover ring-2 ring-white dark:ring-surface-dark`}
         />
       ) : (
