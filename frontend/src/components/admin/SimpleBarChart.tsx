@@ -1,9 +1,19 @@
 interface BarChartProps {
-  data: Array<{ date: string; count: number }>;
+  data?: Array<{ date: string; count: number }>;
   label: string;
 }
 
-export default function SimpleBarChart({ data, label }: BarChartProps) {
+export default function SimpleBarChart({ data = [], label }: BarChartProps) {
+  // If data is empty, return a placeholder
+  if (!data || data.length === 0) {
+    return (
+      <div>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+        <p className="text-sm text-gray-400">No data available</p>
+      </div>
+    );
+  }
+
   const max = Math.max(...data.map((d) => d.count), 1);
 
   return (
@@ -23,9 +33,9 @@ export default function SimpleBarChart({ data, label }: BarChartProps) {
         ))}
       </div>
       <div className="mt-1 flex justify-between text-[10px] text-gray-400">
-        <span>{new Date(data[0]?.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+        <span>{new Date(data[0].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
         <span>
-          {new Date(data[data.length - 1]?.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+          {new Date(data[data.length - 1].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
         </span>
       </div>
     </div>
