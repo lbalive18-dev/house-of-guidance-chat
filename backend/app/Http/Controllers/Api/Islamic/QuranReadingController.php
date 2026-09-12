@@ -31,25 +31,15 @@ class QuranReadingController extends Controller
 
     public function show(Request $request, Surah $surah): JsonResponse
     {
-        $language = $request->input('language', 'en');
-        $translator = $request->input(
-            'translator',
-            'Mohammed Marmaduke Pickthall'
-        );
+        $language = $request->input('language');
+        $translator = $request->input('translator');
+
         $reciterSlug = $request->input(
             'reciter',
             'mishary-rashid-alafasy'
         );
 
         $surah->load([
-            'ayahs.translations' => function ($query) use (
-                $language,
-                $translator
-            ) {
-                $query
-                    ->where('language', $language)
-                    ->where('translator', $translator);
-            },
             'ayahs.audio' => function ($query) use ($reciterSlug) {
                 $query->whereHas('reciter', function ($reciterQuery) use (
                     $reciterSlug
@@ -58,6 +48,19 @@ class QuranReadingController extends Controller
                 });
             },
         ]);
+
+        if ($language && $translator) {
+            $surah->load([
+                'ayahs.translations' => function ($query) use (
+                    $language,
+                    $translator
+                ) {
+                    $query
+                        ->where('language', $language)
+                        ->where('translator', $translator);
+                },
+            ]);
+        }
 
         return response()->json([
             'surah' => $surah,
