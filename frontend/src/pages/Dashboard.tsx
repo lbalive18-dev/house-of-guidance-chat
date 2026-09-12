@@ -56,7 +56,7 @@ export default function Dashboard() {
 
             <div>
               <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 md:text-2xl">
-                As-salamu alaykum, {user.name.split(' ')[0]}
+                As-salamu alaykum, {(user.name ?? 'User').split(' ')[0]}
               </h1>
 
               <p className="mt-1 text-sm capitalize text-gray-500 dark:text-gray-400">

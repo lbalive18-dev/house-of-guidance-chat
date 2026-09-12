@@ -32,7 +32,7 @@ export default function Login() {
     try {
       const user = await login(values);
       setUser(user);
-      toast.success(`Welcome back, ${user.name.split(' ')[0]}!`);
+      toast.success(`Welcome back, ${(user.name ?? 'User').split(' ')[0]}!`);
       const from = (location.state as { from?: Location })?.from?.pathname ?? '/';
       navigate(from, { replace: true });
     } catch (err) {
