@@ -14,10 +14,18 @@ const PRAYER_ORDER: Array<keyof PrayerTimes['timings']> = [
   'Isha',
 ];
 
-function parseTimeToday(time: string): Date {
+function parseTimeToday(time?: string): Date | null {
+  if (!time || typeof time !== 'string') return null;
+
   const [hours, minutes] = time.split(':').map(Number);
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+
   const date = new Date();
   date.setHours(hours, minutes, 0, 0);
+
   return date;
 }
 
@@ -57,12 +65,17 @@ export default function PrayerTimesPage() {
 
   const nextPrayer = useMemo(() => {
     if (!times) return null;
+
     const now = new Date();
 
     for (const name of PRAYER_ORDER) {
       const time = parseTimeToday(times.timings[name]);
-      if (time > now) return name;
+
+      if (time && time > now) {
+        return name;
+      }
     }
+
     return PRAYER_ORDER[0];
   }, [times]);
 
@@ -73,10 +86,16 @@ export default function PrayerTimesPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-6">
       <div className="mb-6 flex items-center gap-3">
-        <Link to="/" className="rounded-full p-1.5 text-gray-500 hover:bg-primary-50 dark:hover:bg-primary-900/30">
+        <Link
+          to="/"
+          className="rounded-full p-1.5 text-gray-500 hover:bg-primary-50 dark:hover:bg-primary-900/30"
+        >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-lg font-bold text-gray-900 dark:text-gray-50">Prayer Times</h1>
+
+        <h1 className="text-lg font-bold text-gray-900 dark:text-gray-50">
+          Prayer Times
+        </h1>
       </div>
 
       {loading && (
@@ -88,9 +107,14 @@ export default function PrayerTimesPage() {
       {!loading && error && (
         <div className="card flex flex-col items-center gap-3 px-6 py-10 text-center">
           <MapPin className="h-8 w-8 text-gray-300" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">{error}</p>
+
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {error}
+          </p>
+
           <button onClick={load} className="btn-secondary">
-            <RefreshCw className="h-4 w-4" /> Try again
+            <RefreshCw className="h-4 w-4" />
+            Try again
           </button>
         </div>
       )}
@@ -98,7 +122,10 @@ export default function PrayerTimesPage() {
       {!loading && times && (
         <div className="card px-5 py-5">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-gray-500 dark:text-gray-400">{times.date.readable}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {times.date.readable}
+            </p>
+
             <ShareReminderButton text={shareText} />
           </div>
 
@@ -107,7 +134,9 @@ export default function PrayerTimesPage() {
               <div
                 key={name}
                 className={`flex items-center justify-between rounded-xl px-3 py-2.5 ${
-                  name === nextPrayer ? 'bg-primary-50 dark:bg-primary-900/30' : ''
+                  name === nextPrayer
+                    ? 'bg-primary-50 dark:bg-primary-900/30'
+                    : ''
                 }`}
               >
                 <span
@@ -118,14 +147,16 @@ export default function PrayerTimesPage() {
                   }`}
                 >
                   {name}
+
                   {name === nextPrayer && (
                     <span className="ml-2 text-xs font-normal text-secondary-600 dark:text-secondary-300">
                       Next
                     </span>
                   )}
                 </span>
+
                 <span className="font-mono text-sm text-gray-600 dark:text-gray-300">
-                  {times.timings[name]}
+                  {times.timings[name] ?? '--:--'}
                 </span>
               </div>
             ))}
