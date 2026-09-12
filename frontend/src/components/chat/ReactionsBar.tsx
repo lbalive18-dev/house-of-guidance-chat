@@ -4,14 +4,16 @@ export default function ReactionsBar({
   reactions,
   onToggle,
 }: {
-  reactions: MessageReactionGroup[];
+  reactions?: MessageReactionGroup[];
   onToggle: (emoji: string) => void;
 }) {
-  if (reactions.length === 0) return null;
+  const safeReactions = reactions ?? [];
+
+  if (safeReactions.length === 0) return null;
 
   return (
     <div className="mt-1 flex flex-wrap gap-1">
-      {reactions.map((r) => (
+      {safeReactions.map((r) => (
         <button
           key={r.emoji}
           type="button"
