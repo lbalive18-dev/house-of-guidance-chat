@@ -51,4 +51,4 @@ EXPOSE 9000
 
 ENTRYPOINT ["/bin/sh", "docker/entrypoint.sh"]
 
-CMD ["sh", "-c", "PHP_CLI_SERVER_WORKERS=2 php artisan serve --host=0.0.0.0 --port=${PORT}"]
+CMD ["sh", "-c", "PHP_CLI_SERVER_WORKERS=2 php artisan serve --no-reload --host=0.0.0.0 --port=${PORT}"]
