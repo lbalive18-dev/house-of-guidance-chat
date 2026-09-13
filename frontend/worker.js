@@ -8,14 +8,14 @@ export default {
       url.pathname.startsWith("/api/") ||
       url.pathname.startsWith("/sanctum/")
     ) {
-      const backendUrl = new URL(url.pathname + url.search, BACKEND_URL);
-
-      const headers = new Headers(request.headers);
-      headers.set("Host", new URL(BACKEND_URL).host);
+      const backendUrl = new URL(
+        url.pathname + url.search,
+        BACKEND_URL + "/"
+      );
 
       const backendRequest = new Request(backendUrl, {
         method: request.method,
-        headers,
+        headers: request.headers,
         body: ["GET", "HEAD"].includes(request.method)
           ? undefined
           : request.body,
@@ -23,8 +23,8 @@ export default {
       });
 
       const response = await fetch(backendRequest);
-      const responseHeaders = new Headers(response.headers);
 
+      const responseHeaders = new Headers(response.headers);
       const cookies = responseHeaders.getSetCookie?.() || [];
 
       responseHeaders.delete("Set-Cookie");
@@ -35,6 +35,8 @@ export default {
           cookie.replace(/;\s*Domain=[^;]*/gi, "")
         );
       }
+
+      responseHeaders.set("X-HOG-Worker", "api-proxy");
 
       return new Response(response.body, {
         status: response.status,
