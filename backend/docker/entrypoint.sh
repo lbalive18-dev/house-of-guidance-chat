@@ -18,6 +18,10 @@ if [ -n "$DB_HOST" ]; then
   echo "Database is up."
 fi
 
+# Run Laravel package discovery at runtime, when production environment
+# variables such as the Reverb credentials are available.
+php artisan package:discover --ansi
+
 if [ ! -f /var/www/html/storage/.link-created ]; then
   php artisan storage:link --force >/dev/null 2>&1 || true
   touch /var/www/html/storage/.link-created
