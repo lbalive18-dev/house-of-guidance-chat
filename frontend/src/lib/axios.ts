@@ -8,7 +8,7 @@ import axios from 'axios';
  * first mutating request in a session (handled in the auth module).
  */
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/',
+  baseURL: '/',
   withCredentials: true,
   withXSRFToken: true,
   headers: {
