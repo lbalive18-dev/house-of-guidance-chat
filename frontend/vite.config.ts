@@ -9,6 +9,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/favicon.svg', 'icons/apple-touch-icon.png'],
+
       manifest: {
         name: 'House of Guidance Chat',
         short_name: 'HoG Chat',
@@ -37,43 +38,39 @@ export default defineConfig({
           },
         ],
       },
+
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /\/api\/.*$/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'hog-chat-api-cache',
-              expiration: { maxEntries: 100, maxAgeSeconds: 300 },
-              networkTimeoutSeconds: 5,
-            },
-          },
-        ],
       },
     }),
   ],
+
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
+
   server: {
     host: true,
     port: 5173,
+
     proxy: {
       '/api': {
         target: process.env.VITE_API_URL || 'http://localhost:8000',
         changeOrigin: true,
       },
+
       '/sanctum': {
         target: process.env.VITE_API_URL || 'http://localhost:8000',
         changeOrigin: true,
       },
+
       '/storage': {
         target: process.env.VITE_API_URL || 'http://localhost:8000',
         changeOrigin: true,
       },
+
       '/broadcasting': {
         target: process.env.VITE_API_URL || 'http://localhost:8000',
         changeOrigin: true,
