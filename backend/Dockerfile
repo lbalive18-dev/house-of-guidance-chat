@@ -1,6 +1,9 @@
 # House of Guidance Chat - Backend (Laravel 12 / PHP-FPM)
 FROM php:8.3-fpm-alpine AS base
 
+# nginx + supervisor exist for the single-container Render free-tier path
+# (in-container reverse proxy + process routing); the Oracle path keeps
+# using its dedicated backend-nginx container and ignores them.
 RUN apk add --no-cache \
     bash \
     curl \
@@ -10,6 +13,8 @@ RUN apk add --no-cache \
     libpng-dev \
     libwebp-dev \
     libzip-dev \
+    libpq-dev \
+    nginx \
     oniguruma-dev \
     zip \
     unzip \
@@ -20,6 +25,7 @@ RUN apk add --no-cache \
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install -j$(nproc) \
         pdo_mysql \
+        pdo_pgsql \
         mbstring \
         exif \
         pcntl \
@@ -51,4 +57,4 @@ EXPOSE 9000
 
 ENTRYPOINT ["/bin/sh", "docker/entrypoint.sh"]
 
-CMD ["sh", "-c", "PHP_CLI_SERVER_WORKERS=2 php artisan serve --no-reload --host=0.0.0.0 --port=${PORT}"]
+CMD ["php-fpm"]
