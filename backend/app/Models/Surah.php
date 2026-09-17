@@ -24,6 +24,15 @@ class Surah extends Model
         'verses_count' => 'integer',
     ];
 
+    /**
+     * The API addresses surahs by their canonical number (1-114), which is
+     * what the frontend sends — not the auto-increment id.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'number';
+    }
+
     public function ayahs(): HasMany
     {
         return $this->hasMany(Ayah::class)->orderBy('number');

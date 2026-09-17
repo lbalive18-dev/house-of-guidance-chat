@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { BookOpenText, ScrollText } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import SimpleBarChart from '@/components/admin/SimpleBarChart';
 import { fetchAnalytics } from '@/lib/adminApi';
@@ -71,6 +73,24 @@ export default function AdminAnalyticsPage() {
         </section>
 
         <section>
+          <div className="card mb-4 flex items-center gap-3 px-5 py-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-gray-900 dark:text-gray-50">Islamic library</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Qur’an reader and Hadith books</p>
+            </div>
+            <Link
+              to="/islamic/quran/read"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary-50 px-3 py-2 text-xs font-bold text-primary dark:bg-primary-900/40 dark:text-primary-300"
+            >
+              <BookOpenText className="h-4 w-4" /> Qur’an
+            </Link>
+            <Link
+              to="/islamic/hadith"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary-50 px-3 py-2 text-xs font-bold text-primary dark:bg-primary-900/40 dark:text-primary-300"
+            >
+              <ScrollText className="h-4 w-4" /> Hadith
+            </Link>
+          </div>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Community & Moderation
           </h2>

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, BookOpenText, Languages, MessageSquare, Mic2, Users } from 'lucide-react';
+import { ArrowLeft, BookOpenText, Languages, MessageSquare, Mic2, Phone, ScrollText, Users } from 'lucide-react';
 import { fetchRooms, joinRoom } from '@/lib/roomsApi';
+import { useAuthStore } from '@/store/authStore';
+import RoomCallPanel from '@/components/call/RoomCallPanel';
 import type { Conversation, RoomType } from '@/types/chat';
 
 const ROOM_META: Record<RoomType, { icon: typeof Users; blurb: string }> = {
@@ -17,6 +19,8 @@ export default function RoomsPage() {
   const [rooms, setRooms] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [joiningId, setJoiningId] = useState<number | null>(null);
+  const [liveRoomId, setLiveRoomId] = useState<number | null>(null);
+  const currentUser = useAuthStore((s) => s.user);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,6 +53,24 @@ export default function RoomsPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <h1 className="text-lg font-bold text-gray-900 dark:text-gray-50">Rooms</h1>
+        <div className="ml-auto flex items-center gap-1">
+          <Link
+            to="/islamic/quran/read"
+            className="rounded-full p-2 text-gray-400 hover:bg-primary-50 hover:text-primary dark:hover:bg-primary-900/30"
+            aria-label="Open Qur’an reader"
+            title="Qur’an"
+          >
+            <BookOpenText className="h-5 w-5" />
+          </Link>
+          <Link
+            to="/islamic/hadith"
+            className="rounded-full p-2 text-gray-400 hover:bg-primary-50 hover:text-primary dark:hover:bg-primary-900/30"
+            aria-label="Open Hadith library"
+            title="Hadith"
+          >
+            <ScrollText className="h-5 w-5" />
+          </Link>
+        </div>
       </div>
 
       {loading && (
@@ -64,28 +86,54 @@ export default function RoomsPage() {
             const Icon = meta?.icon ?? Users;
 
             return (
-              <button
-                key={room.id}
-                onClick={() => handleEnter(room)}
-                disabled={joiningId === room.id}
-                className="card flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-primary-50/50 disabled:opacity-60 dark:hover:bg-primary-900/10"
-              >
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary dark:bg-primary-900/40 dark:text-primary-300">
-                  <Icon className="h-6 w-6" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-gray-900 dark:text-gray-50">{room.name}</p>
-                  <p className="truncate text-sm text-gray-500 dark:text-gray-400">
-                    {room.description || meta?.blurb}
-                  </p>
-                  <p className="mt-0.5 text-xs text-gray-400">{room.participant_count} members</p>
-                </div>
-                {!room.is_member && (
-                  <span className="btn-secondary shrink-0 px-3 py-1.5 text-xs">
-                    {joiningId === room.id ? 'Joining…' : 'Join'}
+              <div key={room.id} className="space-y-2">
+                <button
+                  onClick={() => handleEnter(room)}
+                  disabled={joiningId === room.id}
+                  className="card flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-primary-50/50 disabled:opacity-60 dark:hover:bg-primary-900/10"
+                >
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary dark:bg-primary-900/40 dark:text-primary-300">
+                    <Icon className="h-6 w-6" />
                   </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-900 dark:text-gray-50">{room.name}</p>
+                    <p className="truncate text-sm text-gray-500 dark:text-gray-400">
+                      {room.description || meta?.blurb}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-400">{room.participant_count} members</p>
+                  </div>
+                  {!room.is_member && (
+                    <span className="btn-secondary shrink-0 px-3 py-1.5 text-xs">
+                      {joiningId === room.id ? 'Joining…' : 'Join'}
+                    </span>
+                  )}
+                </button>
+
+                {room.is_member && currentUser && (
+                  <div className="px-1">
+                    <button
+                      type="button"
+                      onClick={() => setLiveRoomId((current) => (current === room.id ? null : room.id))}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1.5 text-xs font-bold text-primary dark:bg-primary-900/40 dark:text-primary-300"
+                    >
+                      <Phone className="h-3.5 w-3.5" />
+                      {liveRoomId === room.id ? 'Hide live session' : 'Live session & seats'}
+                    </button>
+                    {liveRoomId === room.id && (
+                      <div className="mt-2">
+                        <RoomCallPanel
+                          conversationId={room.id}
+                          currentUserId={currentUser.id}
+                          currentUserName={currentUser.name}
+                          currentUserAvatar={currentUser.avatar_url}
+                          isAdmin={room.my_role === 'admin'}
+                          roomName={room.name ?? 'Room'}
+                        />
+                      </div>
+                    )}
+                  </div>
                 )}
-              </button>
+              </div>
             );
           })}
       </div>

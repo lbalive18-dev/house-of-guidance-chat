@@ -7,7 +7,7 @@
 # Usage: replace the placeholders or export APP_DOMAIN/API_DOMAIN before
 # running `docker compose -f docker-compose.prod.yml up -d`.
 
-{$APP_DOMAIN:chat.example.org} {
+{$APP_DOMAIN:chat.houseofguidancechat.duckdns.org} {
     reverse_proxy frontend:80
     encode gzip zstd
     header {
@@ -17,11 +17,11 @@
     }
 }
 
-{$API_DOMAIN:api.chat.example.org} {
+{$API_DOMAIN:api.houseofguidancechat.duckdns.org} {
     reverse_proxy backend-nginx:80
     encode gzip zstd
 }
 
-{$REVERB_DOMAIN:ws.chat.example.org} {
+{$REVERB_DOMAIN:ws.houseofguidancechat.duckdns.org} {
     reverse_proxy reverb:8080
 }

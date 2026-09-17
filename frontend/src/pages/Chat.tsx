@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Info } from 'lucide-react';
+import { ArrowLeft, BookOpenText, Info, ScrollText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Avatar from '@/components/ui/Avatar';
 import MessageBubble from '@/components/chat/MessageBubble';
 import MessageComposer from '@/components/chat/MessageComposer';
 import TypingIndicator from '@/components/chat/TypingIndicator';
 import GroupInfoPanel from '@/components/chat/GroupInfoPanel';
+import ChatCallSection from '@/components/call/ChatCallSection';
+import RoomCallPanel from '@/components/call/RoomCallPanel';
 import { useAuthStore } from '@/store/authStore';
 import { useConversationChannel } from '@/hooks/useConversationChannel';
 import { api } from '@/lib/axios';
@@ -236,6 +238,22 @@ export default function Chat() {
             <Info className="h-5 w-5" />
           </button>
         )}
+        <Link
+          to="/islamic/quran/read"
+          className="rounded-full p-1.5 text-gray-400 hover:bg-primary-50 hover:text-primary dark:hover:bg-primary-900/30"
+          aria-label="Open Qur’an reader"
+          title="Qur’an"
+        >
+          <BookOpenText className="h-5 w-5" />
+        </Link>
+        <Link
+          to="/islamic/hadith"
+          className="rounded-full p-1.5 text-gray-400 hover:bg-primary-50 hover:text-primary dark:hover:bg-primary-900/30"
+          aria-label="Open Hadith library"
+          title="Hadith"
+        >
+          <ScrollText className="h-5 w-5" />
+        </Link>
       </div>
 
       {showGroupInfo && conversation?.type === 'group' && (
@@ -244,6 +262,23 @@ export default function Chat() {
           onClose={() => setShowGroupInfo(false)}
           onUpdated={(updated) => setConversation(updated)}
         />
+      )}
+
+      {conversation && currentUser && !conversation.room_type && (
+        <ChatCallSection conversation={conversation} currentUser={currentUser} />
+      )}
+
+      {conversation && currentUser && conversation.room_type && (
+        <div className="border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+          <RoomCallPanel
+            conversationId={conversation.id}
+            currentUserId={currentUser.id}
+            currentUserName={currentUser.name}
+            currentUserAvatar={currentUser.avatar_url}
+            isAdmin={conversation.my_role === 'admin'}
+            roomName={conversation.name ?? 'Room'}
+          />
+        </div>
       )}
 
       <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto py-3">

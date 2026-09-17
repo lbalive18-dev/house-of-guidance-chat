@@ -13,6 +13,21 @@ class DatabaseSeeder extends Seeder
         $this->call([
             HadithSeeder::class,
             DuaSeeder::class,
+            HadithBookSeeder::class,
+        ]);
+
+        // Quran dataset (114 surahs / 6236 ayahs + Pickthall translation +
+        // reciters + audio URL records). These seeders validate their own
+        // row counts and throw on incomplete imports. They read only the
+        // committed data files under database/data/ and build URLs for the
+        // project's existing approved audio CDN — no network calls.
+        $this->call([
+            SurahSeeder::class,
+            AyahSeeder::class,
+            QuranTranslationSeeder::class,
+            QuranReciterSeeder::class,
+            QuranAudioSeeder::class,
+            QuranSurahAudioSeeder::class,
         ]);
 
         if (! app()->isProduction()) {

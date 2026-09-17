@@ -10,11 +10,24 @@ export interface DailyVerse {
 export interface Hadith {
   id: number;
   collection: string;
+  source_collection: string | null;
+  source_number: number | null;
+  hadith_number: number | null;
+  chapter: string | null;
   narrator: string | null;
   arabic_text: string | null;
   text: string;
   reference: string;
+  grade: string | null;
   category: string;
+}
+
+export interface HadithBook {
+  collection: string;
+  title_en: string;
+  title_ar: string | null;
+  description: string;
+  count: number;
 }
 
 export interface Dua {

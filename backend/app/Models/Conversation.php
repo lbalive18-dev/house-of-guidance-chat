@@ -18,6 +18,7 @@ class Conversation extends Model
         'type',
         'room_type',
         'is_public',
+        'seat_capacity',
         'name',
         'description',
         'avatar_path',
@@ -59,6 +60,42 @@ class Conversation extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class);
+    }
+
+    public function callSessions(): HasMany
+    {
+        return $this->hasMany(CallSession::class);
+    }
+
+    public function activeCallSession(): ?CallSession
+    {
+        return $this->callSessions()
+            ->whereIn('status', [CallSession::STATUS_RINGING, CallSession::STATUS_ACTIVE])
+            ->latest()
+            ->first();
+    }
+
+    public function seats(): HasMany
+    {
+        return $this->hasMany(RoomSeat::class)->orderBy('seat_number');
+    }
+
+    public function isRoom(): bool
+    {
+        return $this->room_type !== null;
+    }
+
+    public function isRoomAdmin(User $user): bool
+    {
+        if ($this->created_by === $user->id) {
+            return true;
+        }
+
+        return $this->participants()
+            ->where('user_id', $user->id)
+            ->wherePivot('role', 'admin')
+            ->wherePivotNull('left_at')
+            ->exists();
     }
 
     public function latestMessage(): \Illuminate\Database\Eloquent\Relations\HasOne

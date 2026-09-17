@@ -1,0 +1,56 @@
+# House of Guidance Chat - Render free-tier blueprint (no card required).
+# ONE web service only: the backend image supervises nginx ($PORT),
+# PHP-FPM, Reverb, the queue worker, and the scheduler loop in a single
+# container, because 24/7 operation of one service (~720 instance-hours
+# per month) is all the 750-hour free budget holds. Do NOT add separate
+# worker/cron/private services on the free plan.
+services:
+  - type: web
+    name: house-of-guidance-chat-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerCommand: supervisord -c /var/www/html/docker/supervisord.conf
+    healthCheckPath: /up
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: RUN_MIGRATIONS
+        value: true
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: 5432
+      - key: DB_DATABASE
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_SECURE_COOKIE
+        value: true
+      - key: SESSION_SAME_SITE
+        value: none
+      - key: CACHE_STORE
+        value: redis
+      - key: QUEUE_CONNECTION
+        value: redis
+      - key: REDIS_URL
+        sync: false
+      - key: MAIL_MAILER
+        value: brevo-api
+      - key: PUBLIC_DISK_DRIVER
+        value: supabase
+      - key: AVATARS_DISK_DRIVER
+        value: supabase
+      - key: CHAT_ATTACHMENTS_DISK_DRIVER
+        value: supabase
+      - key: VOICE_NOTES_DISK_DRIVER
+        value: supabase

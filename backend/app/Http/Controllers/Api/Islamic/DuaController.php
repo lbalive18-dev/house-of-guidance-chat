@@ -13,8 +13,8 @@ class DuaController extends Controller
         $duas = Dua::query()
             ->when($request->filled('category'), fn ($q) => $q->where('category', $request->string('category')))
             ->when($request->filled('q'), function ($q) use ($request) {
-                $term = $request->string('q');
-                $q->where(fn ($sub) => $sub->where('title', 'like', "%{$term}%")->orWhere('translation', 'like', "%{$term}%"));
+                $term = (string) $request->string('q');
+                $q->where(fn ($sub) => $sub->whereLikeInsensitive('title', $term)->whereLikeInsensitive('translation', $term, 'or'));
             })
             ->orderBy('title')
             ->paginate($this->perPage($request, 20));

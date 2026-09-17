@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class Hadith extends Model
 {
-    protected $fillable = ['collection', 'narrator', 'arabic_text', 'text', 'reference', 'category'];
+    protected $fillable = ['collection', 'source_collection', 'source_number', 'hadith_number', 'chapter', 'narrator', 'arabic_text', 'text', 'reference', 'grade', 'category'];
 }

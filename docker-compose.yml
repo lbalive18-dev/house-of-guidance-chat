@@ -16,6 +16,9 @@ services:
       - ./backend/.env
     environment:
       RUN_MIGRATIONS: "true"
+    # Dedicated per-process setup: php-fpm only (nginx lives in its own
+    # container here). The image default is single-container supervisord.
+    command: ["php-fpm"]
     depends_on:
       mysql:
         condition: service_healthy

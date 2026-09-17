@@ -1,0 +1,77 @@
+{
+  "generated": "2026-09-17",
+  "retrieval_date": "2026-09-17",
+  "note": "Every religious string in the sibling *.json files is copied verbatim from the sources below. Nothing was paraphrased, generated, or invented. Texts are preserved exactly as supplied (leading/trailing whitespace trimmed only).",
+  "sources": [
+    {
+      "collection": "Al-Arba'in an-Nawawiyyah",
+      "file": "nawawi-40.json",
+      "source_name": "fawazahmed0/hadith-api",
+      "source_urls": [
+        "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/ara-nawawi.json",
+        "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/eng-nawawi.json"
+      ],
+      "pinned_ref": "1",
+      "pinned_commit": "df57907be35291c91ad6a6691180e22ca9920784",
+      "pinned_commit_date": "2026-06-03",
+      "expected_records": 42,
+      "numbering": "1-42 exactly as numbered upstream (the source uses 42 entries; not forced to 40)",
+      "reference_format": "Hadith {n}, 40 Hadith an-Nawawi (matches sunnah.com Reference line)",
+      "narrator": "not isolated upstream (kept inline in text); stored NULL",
+      "grade": "upstream grades arrays are empty; stored NULL, never invented",
+      "chapter": "single-section book upstream; stored NULL",
+      "verification": "Arabic opening of no. 1 matches https://sunnah.com/nawawi40:1; counts 42/42 cross-checked against the same collection page family"
+    },
+    {
+      "collection": "40 Hadith Qudsi",
+      "file": "qudsi-40.json",
+      "source_name": "fawazahmed0/hadith-api",
+      "source_urls": [
+        "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/ara-qudsi.json",
+        "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/eng-qudsi.json"
+      ],
+      "pinned_ref": "1",
+      "pinned_commit": "df57907be35291c91ad6a6691180e22ca9920784",
+      "pinned_commit_date": "2026-06-03",
+      "expected_records": 40,
+      "numbering": "1-40 exactly as numbered upstream; kept fully separate from Nawawi",
+      "reference_format": "Hadith {n}, 40 Hadith Qudsi",
+      "narrator": "not isolated upstream (kept inline in text); stored NULL",
+      "grade": "upstream grades arrays are empty; stored NULL, never invented",
+      "chapter": "single-section book upstream; stored NULL"
+    },
+    {
+      "collection": "Riyad as-Salihin",
+      "file": "riyad-as-salihin.json",
+      "source_name": "AhmedBaset/hadith-json (scraped from Sunnah.com per its README)",
+      "source_urls": [
+        "https://cdn.jsdelivr.net/gh/AhmedBaset/hadith-json@v1.2.0/db/by_chapter/other_books/riyad_assalihin/introduction.json",
+        "https://cdn.jsdelivr.net/gh/AhmedBaset/hadith-json@v1.2.0/db/by_chapter/other_books/riyad_assalihin/1.json",
+        ".../2.json through .../19.json (same pattern)"
+      ],
+      "pinned_ref": "v1.2.0",
+      "pinned_commit": "ca32fd72aa16eeeb9a819c80bb65c9e78766532d",
+      "expected_records": 1896,
+      "numbering": "global 1-1896 = concatenation of by_chapter files in order [introduction, 1..19]; PROVEN against https://sunnah.com/riyadussalihin:1 (first row, intentions) and https://sunnah.com/riyadussalihin:1896 (last row, Suhaib/Jannah, Book of Forgiveness). The single-file by_book dump uses scrape order and MUST NOT be used for numbering.",
+      "reference_format": "Riyad as-Salihin {n} (matches sunnah.com Reference line)",
+      "narrator": "taken from upstream english.narrator; 11 rows have none upstream and store NULL",
+      "grade": "not supplied upstream; stored NULL, never invented",
+      "chapter": "upstream coarse bucket English title (20 buckets); Arabic bucket titles not carried into rows"
+    },
+    {
+      "collection": "Daily Essentials",
+      "file": "daily-essentials.json",
+      "source_name": "curated داخل-repo from the three datasets above (no external text)",
+      "expected_records": 20,
+      "numbering": "curated positions 1-20; originals preserved in source_collection/source_number",
+      "selection_rule": "first 10 Nawawi (the author's own front-loaded order) + first 5 Qudsi + first 5 Riyad; rows copied byte-identically (verified by script)",
+      "reference": "original reference retained verbatim"
+    }
+  ],
+  "licensing": {
+    "fawazahmed0_hadith_api_repository": "The Unlicense (public-domain dedication, fetched from the pinned ref). Translation texts inside carry unattributed translators in edition metadata (ara/eng author fields read 'Imam Nawawi'/'Unknown'). Arabic: classical 13th-century texts, public domain by age. English: provenance unclear — included per the approved source strategy, FLAGGED FOR OWNER REVIEW before any commercial redistribution.",
+    "ahmedbaset_hadith_json_repository": "NO license file in the repository at the pinned tag. README states data scraped from Sunnah.com. Arabic: classical 13th-century text, public domain by age. English: Sunnah.com translation, no declared redistribution license — included per the approved source strategy, FLAGGED FOR OWNER REVIEW before any commercial redistribution.",
+    "arabic_texts": "Imam an-Nawawi (d. 1277 CE); public domain by age worldwide.",
+    "removal_path": "If any English translation must be withdrawn, delete the corresponding rows' English via a seeder update and relax HadithImportService's English requirement; the importer will then reject only truly incomplete rows."
+  }
+}

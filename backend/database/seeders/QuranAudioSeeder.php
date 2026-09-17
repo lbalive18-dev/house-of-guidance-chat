@@ -23,10 +23,9 @@ class QuranAudioSeeder extends Seeder
             );
         }
 
-        $ayahs = Ayah::with('surah')
-            ->orderBy('surah_id')
-            ->orderBy('number')
-            ->get();
+        $ayahs = Ayah::with('surah')->get()->sortBy(
+            fn (Ayah $ayah) => [$ayah->surah->number, $ayah->number]
+        )->values();
 
         if ($ayahs->count() !== 6236) {
             throw new RuntimeException(
@@ -36,21 +35,18 @@ class QuranAudioSeeder extends Seeder
 
         $records = [];
 
-        foreach ($ayahs as $ayah) {
-            $surahNumber = $ayah->surah->number;
-            $ayahNumber = $ayah->number;
-
-            $audioNumber = sprintf(
-                '%03d%03d',
-                $surahNumber,
-                $ayahNumber
-            );
+        // The islamic.network CDN addresses per-ayah audio by the ayah's
+        // global sequence number (1..6236), e.g. .../ar.alafasy/1.mp3.
+        // (The previous surah+ayah 6-digit format, e.g. 001001.mp3, is not
+        // served by this CDN and returns 403.)
+        foreach ($ayahs as $index => $ayah) {
+            $globalNumber = $index + 1;
 
             $records[] = [
                 'ayah_id' => $ayah->id,
                 'quran_reciter_id' => $reciter->id,
                 'audio_url' =>
-                    "https://cdn.islamic.network/quran/audio/128/ar.alafasy/{$audioNumber}.mp3",
+                    "https://cdn.islamic.network/quran/audio/128/ar.alafasy/{$globalNumber}.mp3",
                 'created_at' => now(),
                 'updated_at' => now(),
             ];

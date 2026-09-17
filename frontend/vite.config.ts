@@ -41,6 +41,19 @@ export default defineConfig({
 
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // Preserved from the legacy vite.config.js duplicate so API GETs
+        // remain NetworkFirst with a short TTL when offline.
+        runtimeCaching: [
+          {
+            urlPattern: /\/api\/.*$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'hog-chat-api-cache',
+              expiration: { maxEntries: 100, maxAgeSeconds: 300 },
+              networkTimeoutSeconds: 5,
+            },
+          },
+        ],
       },
     }),
   ],

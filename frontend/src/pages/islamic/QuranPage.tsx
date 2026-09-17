@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   BookOpen,
   Bookmark,
@@ -146,6 +147,9 @@ export default function QuranPage() {
   const bookmarkForAyah = (ayahId: number) =>
     bookmarks.find((bookmark) => bookmark.ayah_id === ayahId);
 
+  const hasVerifiedAudio =
+    !!surah && (surah.ayahs ?? []).some((ayah) => ayah.audio?.[0]?.audio_url);
+
   async function toggleBookmark(
     ayahId: number,
     existingBookmark: QuranBookmark | undefined,
@@ -238,16 +242,25 @@ export default function QuranPage() {
                 the English translation when needed.
               </p>
 
-              {lastAyahNumber && surah && (
-                <button
-                  type="button"
-                  onClick={continueReading}
-                  className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold"
+              <div className="mt-6 flex flex-wrap gap-3">
+                {lastAyahNumber && surah && (
+                  <button
+                    type="button"
+                    onClick={continueReading}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold"
+                  >
+                    <Play className="h-4 w-4" />
+                    Continue from Ayah {lastAyahNumber}
+                  </button>
+                )}
+                <Link
+                  to="/islamic/quran/read"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-amber-300/90 px-4 py-3 text-sm font-bold text-emerald-950"
                 >
-                  <Play className="h-4 w-4" />
-                  Continue from Ayah {lastAyahNumber}
-                </button>
-              )}
+                  <BookOpen className="h-4 w-4" />
+                  Open book view
+                </Link>
+              </div>
             </div>
 
             <BookOpen className="hidden h-16 w-16 md:block" />
@@ -334,6 +347,12 @@ export default function QuranPage() {
               </button>
             </div>
           </div>
+
+          {surah && !hasVerifiedAudio && !loadingSurah && (
+            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+              Recitation audio is verified for Mishary Alafasy — unavailable for the selected reciter.
+            </div>
+          )}
 
           {surah && (
             <div className="mt-5 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
@@ -495,11 +514,11 @@ export default function QuranPage() {
                 )}
 
                 <div className="space-y-5">
-                  {surah.ayahs.map((ayah) => {
+                  {(surah.ayahs ?? []).map((ayah) => {
                     const translation = showTranslation
-                      ? ayah.translations[0]
+                      ? ayah.translations?.[0]
                       : undefined;
-                    const audio = ayah.audio[0];
+                    const audio = ayah.audio?.[0];
                     const bookmark = bookmarkForAyah(ayah.id);
                     const isLastRead = lastAyahNumber === ayah.number;
                     const isSaving = savingAyah === ayah.number;

@@ -1,13 +1,25 @@
-const BACKEND_URL = "https://house-of-guidance-chat.onrender.com";
-
+// BACKEND_URL is configured via Wrangler `vars` (see wrangler.jsonc).
+// There is intentionally NO fallback URL: proxying auth traffic to a
+// wrong default backend would silently break login/sessions. A missing
+// BACKEND_URL fails loudly with HTTP 500 instead.
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const BACKEND_URL = env.BACKEND_URL;
 
     if (
       url.pathname.startsWith("/api/") ||
-      url.pathname.startsWith("/sanctum/")
+      url.pathname.startsWith("/sanctum/") ||
+      url.pathname.startsWith("/broadcasting/") ||
+      url.pathname.startsWith("/storage/")
     ) {
+      if (!BACKEND_URL) {
+        return new Response(
+          "BACKEND_URL is not configured for this Worker.",
+          { status: 500, headers: { "Content-Type": "text/plain" } }
+        );
+      }
+
       const backendUrl = new URL(
         url.pathname + url.search,
         BACKEND_URL + "/"

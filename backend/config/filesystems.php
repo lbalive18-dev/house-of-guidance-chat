@@ -11,36 +11,57 @@ return [
             'throw' => false,
         ],
 
+        // Upload disks support two drivers selected per disk via env:
+        // local (development default, previous behavior) and supabase
+        // (production on hosts with ephemeral disks). Switching drivers
+        // keeps every call site working: same disk names, same paths, and
+        // public buckets mirror the old public/storage URLs one-to-one.
         'public' => [
-            'driver' => 'local',
+            'driver' => env('PUBLIC_DISK_DRIVER', 'local'),
             'root' => storage_path('app/public'),
-            'url' => env('APP_URL').'/storage',
+            'url' => env('PUBLIC_DISK_URL', env('APP_URL').'/storage'),
             'visibility' => 'public',
             'throw' => false,
+            'supabase_url' => env('SUPABASE_URL'),
+            'supabase_key' => env('SUPABASE_SERVICE_KEY'),
+            'bucket' => env('SUPABASE_BUCKET', 'hog-uploads'),
+            'prefix' => '',
         ],
 
         'avatars' => [
-            'driver' => 'local',
+            'driver' => env('AVATARS_DISK_DRIVER', 'local'),
             'root' => storage_path('app/public/avatars'),
-            'url' => env('APP_URL').'/storage/avatars',
+            'url' => env('AVATARS_DISK_URL', env('APP_URL').'/storage/avatars'),
             'visibility' => 'public',
             'throw' => false,
+            'supabase_url' => env('SUPABASE_URL'),
+            'supabase_key' => env('SUPABASE_SERVICE_KEY'),
+            'bucket' => env('SUPABASE_BUCKET', 'hog-uploads'),
+            'prefix' => 'avatars/',
         ],
 
         'chat-attachments' => [
-            'driver' => 'local',
+            'driver' => env('CHAT_ATTACHMENTS_DISK_DRIVER', 'local'),
             'root' => storage_path('app/public/chat-attachments'),
-            'url' => env('APP_URL').'/storage/chat-attachments',
+            'url' => env('CHAT_ATTACHMENTS_DISK_URL', env('APP_URL').'/storage/chat-attachments'),
             'visibility' => 'public',
             'throw' => false,
+            'supabase_url' => env('SUPABASE_URL'),
+            'supabase_key' => env('SUPABASE_SERVICE_KEY'),
+            'bucket' => env('SUPABASE_BUCKET', 'hog-uploads'),
+            'prefix' => 'chat-attachments/',
         ],
 
         'voice-notes' => [
-            'driver' => 'local',
+            'driver' => env('VOICE_NOTES_DISK_DRIVER', 'local'),
             'root' => storage_path('app/public/voice-notes'),
-            'url' => env('APP_URL').'/storage/voice-notes',
+            'url' => env('VOICE_NOTES_DISK_URL', env('APP_URL').'/storage/voice-notes'),
             'visibility' => 'public',
             'throw' => false,
+            'supabase_url' => env('SUPABASE_URL'),
+            'supabase_key' => env('SUPABASE_SERVICE_KEY'),
+            'bucket' => env('SUPABASE_BUCKET', 'hog-uploads'),
+            'prefix' => 'voice-notes/',
         ],
 
         's3' => [

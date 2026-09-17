@@ -29,9 +29,15 @@ class QuranProgressController extends Controller
     public function store(
         Request $request,
         Surah $surah,
-        Ayah $ayah
+        int $ayah
     ): JsonResponse {
-        if ($ayah->surah_id !== $surah->id) {
+        // The route carries the ayah NUMBER within the surah (matching the
+        // reader UI), not the ayahs table id — resolve it explicitly.
+        $ayahModel = Ayah::where('surah_id', $surah->id)
+            ->where('number', $ayah)
+            ->first();
+
+        if (! $ayahModel) {
             return response()->json([
                 'message' => 'The selected ayah does not belong to this surah.',
             ], 422);
@@ -43,8 +49,8 @@ class QuranProgressController extends Controller
                 'surah_id' => $surah->id,
             ],
             [
-                'last_ayah_id' => $ayah->id,
-                'last_ayah_number' => $ayah->number,
+                'last_ayah_id' => $ayahModel->id,
+                'last_ayah_number' => $ayahModel->number,
                 'completed' => $request->boolean('completed'),
             ]
         );

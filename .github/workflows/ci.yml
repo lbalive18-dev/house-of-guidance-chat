@@ -41,6 +41,55 @@ jobs:
       - name: Run PHPUnit
         run: php artisan test
 
+  backend-tests-pg:
+    name: Backend Tests (PostgreSQL 16, PHP 8.3)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hog_test
+          POSTGRES_PASSWORD: hog_test_pw
+          POSTGRES_DB: hog_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U hog_test -d hog_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_DATABASE: hog_test
+      DB_USERNAME: hog_test
+      DB_PASSWORD: hog_test_pw
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_pgsql, gd, zip, intl
+          coverage: none
+
+      - name: Copy .env
+        run: cp .env.example .env
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Run PHPUnit on PostgreSQL
+        run: php artisan test
+
   frontend-build:
     name: Frontend Build & Typecheck
     runs-on: ubuntu-latest

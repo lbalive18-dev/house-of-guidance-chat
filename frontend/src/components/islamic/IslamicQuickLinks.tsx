@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
-import { Book, Calendar, Clock, Compass } from 'lucide-react';
+import { Book, BookOpenText, Calendar, Clock, Compass, ScrollText } from 'lucide-react';
 
 const links = [
+  { to: '/islamic/quran/read', icon: BookOpenText, label: 'Qur’an' },
+  { to: '/islamic/hadith', icon: ScrollText, label: 'Hadith' },
   { to: '/islamic/prayer-times', icon: Clock, label: 'Prayer Times' },
   { to: '/islamic/qiblah', icon: Compass, label: 'Qiblah' },
   { to: '/islamic/duas', icon: Book, label: 'Dua Library' },

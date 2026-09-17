@@ -57,4 +57,8 @@ EXPOSE 9000
 
 ENTRYPOINT ["/bin/sh", "docker/entrypoint.sh"]
 
-CMD ["php-fpm"]
+# Default: single-container mode (Render free tier) — supervisord serves
+# HTTP on $PORT via in-container nginx plus Reverb, queue, and scheduler.
+# Hosts with dedicated per-process containers (docker-compose.yml,
+# docker-compose.prod.yml) override this with an explicit php-fpm command.
+CMD ["supervisord", "-c", "/var/www/html/docker/supervisord.conf"]

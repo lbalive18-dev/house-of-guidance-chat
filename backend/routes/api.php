@@ -25,6 +25,7 @@ Route::get('/ping', function () {
 });
 
 require __DIR__.'/api/auth.php';
+require __DIR__.'/api/calls.php';
 require __DIR__.'/api/chat.php';
 require __DIR__.'/api/groups.php';
 require __DIR__.'/api/users.php';

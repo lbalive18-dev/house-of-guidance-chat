@@ -34,6 +34,10 @@ services:
       RUN_MIGRATIONS: "true"
     env_file:
       - ./backend/.env
+    # Dedicated per-process setup: php-fpm only (backend-nginx, reverb,
+    # queue, and scheduler are separate services). The image default is
+    # single-container supervisord for hosts without that luxury.
+    command: ["php-fpm"]
     volumes:
       - backend-storage:/var/www/html/storage/app/public
       - backend-public:/var/www/html/public

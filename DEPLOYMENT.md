@@ -12,7 +12,8 @@ delivery. The only cost that's hard to avoid is a real domain name
    resources are never billed).
 2. Create a **Compute Instance**:
    - Shape: `VM.Standard.A1.Flex` (Ampere ARM) — the Always Free tier
-     includes up to 4 OCPUs / 24GB RAM, easily enough for this stack.
+     includes up to 2 OCPUs / 12GB RAM (reduced from 4/24 in mid-2026;
+     requesting more will fail provisioning), still enough for this stack.
    - Image: **Ubuntu 24.04**.
    - Add your SSH public key.
 3. Under the instance's **Virtual Cloud Network**, open ingress rules for

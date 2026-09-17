@@ -2,6 +2,14 @@
   "name": "house-of-guidance-chat",
   "main": "worker.js",
   "compatibility_date": "2026-09-13",
+  // BACKEND_URL is set per deploy and intentionally left empty here:
+  // the Worker fails loudly (HTTP 500) rather than proxying auth to a
+  // wrong backend. Oracle path: https://api.<domain>. Render path:
+  // https://<api-service>.onrender.com (or `wrangler deploy --var
+  // BACKEND_URL:https://...` to override without editing this file).
+  "vars": {
+    "BACKEND_URL": ""
+  },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

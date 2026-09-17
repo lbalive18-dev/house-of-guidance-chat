@@ -15,8 +15,8 @@ class AdminUserController extends Controller
     {
         $users = User::query()
             ->when($request->filled('q'), function ($q) use ($request) {
-                $term = $request->string('q');
-                $q->where(fn ($sub) => $sub->where('name', 'like', "%{$term}%")->orWhere('email', 'like', "%{$term}%"));
+                $term = (string) $request->string('q');
+                $q->where(fn ($sub) => $sub->whereLikeInsensitive('name', $term)->whereLikeInsensitive('email', $term, 'or'));
             })
             ->when($request->filled('role'), fn ($q) => $q->where('role', $request->string('role')))
             ->when($request->boolean('banned_only'), fn ($q) => $q->where('is_banned', true))

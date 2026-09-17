@@ -23,8 +23,9 @@ class UserSearchController extends Controller
             ->where('id', '!=', $request->user()->id)
             ->where('is_banned', false)
             ->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                    ->orWhere('email', 'like', "%{$query}%");
+                $term = (string) $query;
+                $q->whereLikeInsensitive('name', $term)
+                    ->whereLikeInsensitive('email', $term, 'or');
             })
             ->when($request->filled('role'), fn ($q) => $q->where('role', $request->string('role')))
             ->orderBy('name')

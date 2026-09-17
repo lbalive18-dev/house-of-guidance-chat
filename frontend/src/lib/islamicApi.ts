@@ -4,6 +4,7 @@ import type {
   DailyVerse,
   Dua,
   Hadith,
+  HadithBook,
   HijriCalendarDay,
   HijriDate,
   PrayerTimes,
@@ -25,7 +26,7 @@ export async function fetchDailyHadith(): Promise<Hadith> {
 }
 
 export async function fetchHadiths(
-  params: { category?: string; q?: string; page?: number } = {},
+  params: { collection?: string; category?: string; chapter?: string; q?: string; page?: number } = {},
 ) {
   const { data } = await api.get<PaginatedResponse<Hadith>>(
     '/api/islamic/hadith',
@@ -35,9 +36,32 @@ export async function fetchHadiths(
   return data;
 }
 
+export async function fetchHadith(id: number): Promise<Hadith> {
+  const { data } = await api.get<Hadith>(`/api/islamic/hadith/${id}`);
+
+  return data;
+}
+
 export async function fetchHadithCategories(): Promise<string[]> {
   const { data } = await api.get<string[]>(
     '/api/islamic/hadith/categories',
+  );
+
+  return data;
+}
+
+export async function fetchHadithBooks(): Promise<HadithBook[]> {
+  const { data } = await api.get<{ books: HadithBook[] }>(
+    '/api/islamic/hadith/collections',
+  );
+
+  return data.books;
+}
+
+export async function fetchHadithChapters(collection?: string): Promise<string[]> {
+  const { data } = await api.get<string[]>(
+    '/api/islamic/hadith/chapters',
+    { params: collection ? { collection } : {} },
   );
 
   return data;

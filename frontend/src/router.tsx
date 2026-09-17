@@ -19,6 +19,8 @@ import QiblahPage from '@/pages/islamic/QiblahPage';
 import DuaLibraryPage from '@/pages/islamic/DuaLibraryPage';
 import IslamicCalendarPage from '@/pages/islamic/IslamicCalendarPage';
 import QuranPage from '@/pages/islamic/QuranPage';
+import QuranReaderPage from '@/pages/islamic/QuranReaderPage';
+import HadithLibraryPage from '@/pages/islamic/HadithLibraryPage';
 
 import RoomsPage from '@/pages/hog/RoomsPage';
 import AnnouncementsPage from '@/pages/hog/AnnouncementsPage';
@@ -126,6 +128,24 @@ export const router = createBrowserRouter([
         element: (
           <AppLayout>
             <QuranPage />
+          </AppLayout>
+        ),
+      },
+
+      {
+        path: '/islamic/hadith',
+        element: (
+          <AppLayout>
+            <HadithLibraryPage />
+          </AppLayout>
+        ),
+      },
+
+      {
+        path: '/islamic/quran/read',
+        element: (
+          <AppLayout>
+            <QuranReaderPage />
           </AppLayout>
         ),
       },
