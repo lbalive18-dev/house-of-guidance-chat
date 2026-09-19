@@ -55,6 +55,23 @@ if [ ! -f /var/www/html/storage/.link-created ]; then
   touch /var/www/html/storage/.link-created
 fi
 
+# Opt-in repair for interrupted first runs on shell-less hosts.
+# Runs HERE — after the database wait, before `php artisan migrate` — in
+# plain shell with autocommit statements, deliberately OUTSIDE any Laravel
+# migration transaction. (A repair placed inside the 0001 migration cannot
+# work: PostgreSQL aborts the whole transaction on the first error, so even
+# the cleanup DROP fails with 25P02.) Only the three tables owned by the
+# first migration are ever touched, and only when explicitly enabled.
+# NEVER enable on a database holding real data.
+if [ "${MIGRATE_REPAIR_0001:-false}" = "true" ]; then
+  if [ -z "${DB_WAIT_DSN:-}" ]; then
+    echo "MIGRATE_REPAIR_0001 is set but no database DSN is configured - skipping repair." >&2
+  else
+    echo "MIGRATE_REPAIR_0001=true - dropping interrupted first-migration tables (users, password_reset_tokens, sessions)..."
+    php -r "try { \$pdo = new PDO('${DB_WAIT_DSN}', '${DB_USERNAME}', '${DB_PASSWORD}'); \$pdo->exec('DROP TABLE IF EXISTS sessions'); \$pdo->exec('DROP TABLE IF EXISTS password_reset_tokens'); \$pdo->exec('DROP TABLE IF EXISTS users'); echo 'Repair cleanup done.'; } catch (\Throwable \$e) { echo 'Repair cleanup failed: '.\$e->getMessage(); exit(1); }" 2>&1 || echo "WARNING: repair cleanup did not complete - migrate will run normally." >&2
+  fi
+fi
+
 # Only the primary "backend" container runs migrations/cache warmup; the
 # queue/reverb/scheduler containers share this same image but shouldn't
 # race each other to migrate on every restart.
