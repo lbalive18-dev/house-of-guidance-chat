@@ -3,6 +3,23 @@ set -e
 
 echo "House of Guidance Chat - backend starting (${APP_ENV:-production})..."
 
+# Laravel cannot serve anything (every request 500s) without an APP_KEY.
+# Render-style hosts inject env instead of a .env file, and it is easy to
+# forget the key. Generate an ephemeral one so the app boots; a PERSISTENT
+# key must still be set in the host env, otherwise sessions, encrypted
+# cookies, and signed URLs invalidate on every restart/redeploy.
+if [ -z "${APP_KEY:-}" ]; then
+  echo "APP_KEY is empty - generating an ephemeral key for this boot..."
+  GENERATED_KEY=$(php artisan key:generate --show 2>/dev/null | tr -d '\r\n ') || GENERATED_KEY=""
+
+  if [ -n "$GENERATED_KEY" ]; then
+    export APP_KEY="$GENERATED_KEY"
+    echo "WARNING: using an ephemeral APP_KEY. Set a persistent APP_KEY in the host environment."
+  else
+    echo "Could not generate APP_KEY automatically; set APP_KEY in the host environment." >&2
+  fi
+fi
+
 # Wait for the database to accept connections before touching
 # migrations. Driver-aware: supports mysql, pgsql, and anything else PDO
 # understands via DB_DSN override. sqlite and empty hosts skip the wait.
