@@ -8,6 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Recovery hatch for interrupted first runs on hosts without shell
+        // access: when MIGRATE_REPAIR_0001=true, the three tables owned by
+        // this migration are dropped first, so half-built leftovers from a
+        // killed run cannot poison retries. NEVER enable on a database
+        // holding real data.
+        if (env('MIGRATE_REPAIR_0001', false)) {
+            Schema::dropIfExists('sessions');
+            Schema::dropIfExists('password_reset_tokens');
+            Schema::dropIfExists('users');
+        }
+
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
