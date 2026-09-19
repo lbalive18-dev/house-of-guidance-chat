@@ -70,6 +70,14 @@ if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
   fi
 fi
 
+# Seed once on genuinely fresh databases only (see app:seed-if-fresh).
+# This is how shell-less hosts get their initial Qur'an/Hadith/room data;
+# on any database that already holds data it is a no-op. Runs after
+# migrations so the tables it guards on always exist first.
+if [ "${RUN_SEEDS:-false}" = "true" ]; then
+  php artisan app:seed-if-fresh --no-interaction || true
+fi
+
 echo "Backend ready."
 
 exec "$@"

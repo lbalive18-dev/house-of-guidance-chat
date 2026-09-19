@@ -18,6 +18,9 @@ services:
         value: false
       - key: RUN_MIGRATIONS
         value: true
+      # Seeds once on a fresh database only (guarded; safe to leave on).
+      - key: RUN_SEEDS
+        value: true
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_HOST
