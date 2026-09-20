@@ -55,23 +55,25 @@ if [ ! -f /var/www/html/storage/.link-created ]; then
   touch /var/www/html/storage/.link-created
 fi
 
-# Opt-in repair for interrupted first runs on shell-less hosts.
+# Opt-in repair for interrupted early runs on shell-less hosts.
 # Runs HERE — after the database wait, before `php artisan migrate` — in
 # plain shell with autocommit statements, deliberately OUTSIDE any Laravel
-# migration transaction. (A repair placed inside the 0001 migration cannot
-# work: PostgreSQL aborts the whole transaction on the first error, so even
-# the cleanup DROP fails with 25P02.) Only the three tables owned by the
-# first migration are ever touched, and only when explicitly enabled.
+# migration transaction. (A repair placed inside a migration cannot work:
+# PostgreSQL aborts the whole transaction on the first error, so even the
+# cleanup DROP fails with 25P02.) Only tables that can exist solely as
+# leftovers of an interrupted run are ever touched, and only when
+# explicitly enabled: the three first-migration tables, plus the ephemeral
+# cache/cache_locks tables (cache entries and locks rebuild themselves;
+# dropping them can never destroy user data).
 # NEVER enable on a database holding real data.
 if [ "${MIGRATE_REPAIR_0001:-false}" = "true" ]; then
   if [ -z "${DB_WAIT_DSN:-}" ]; then
     echo "MIGRATE_REPAIR_0001 is set but no database DSN is configured - skipping repair." >&2
   else
-    echo "--- pre-migrate schema state (diagnostic, read-only) ---"
-    php -r "try { \$pdo = new PDO('${DB_WAIT_DSN}', '${DB_USERNAME}', '${DB_PASSWORD}'); foreach (\$pdo->query(\"select tablename from pg_tables where schemaname='public' order by 1\")->fetchAll(PDO::FETCH_COLUMN) as \$t) { echo 'TABLE: '.\$t.PHP_EOL; } try { foreach (\$pdo->query('select migration from migrations order by 1')->fetchAll(PDO::FETCH_COLUMN) as \$m) { echo 'MIGRATED: '.\$m.PHP_EOL; } } catch (\Throwable \$e) { echo 'MIGRATED: <migrations table missing>'.PHP_EOL; } } catch (\Throwable \$e) { echo 'DIAG FAILED: '.\$e->getMessage().PHP_EOL; }" 2>&1 || true
-    echo "MIGRATE_REPAIR_0001=true - dropping interrupted first-migration tables (users, password_reset_tokens, sessions)..."
-    php -r "try { \$pdo = new PDO('${DB_WAIT_DSN}', '${DB_USERNAME}', '${DB_PASSWORD}'); \$pdo->exec('DROP TABLE IF EXISTS sessions'); \$pdo->exec('DROP TABLE IF EXISTS password_reset_tokens'); \$pdo->exec('DROP TABLE IF EXISTS users'); echo 'Repair cleanup done.'; } catch (\Throwable \$e) { echo 'Repair cleanup failed: '.\$e->getMessage(); exit(1); }" 2>&1 || echo "WARNING: repair cleanup did not complete - migrate will run normally." >&2
+    echo "MIGRATE_REPAIR_0001=true - dropping interrupted early-migration tables (users, password_reset_tokens, sessions, cache, cache_locks)..."
+    php -r "try { \$pdo = new PDO('${DB_WAIT_DSN}', '${DB_USERNAME}', '${DB_PASSWORD}'); \$pdo->exec('DROP TABLE IF EXISTS sessions'); \$pdo->exec('DROP TABLE IF EXISTS password_reset_tokens'); \$pdo->exec('DROP TABLE IF EXISTS users'); \$pdo->exec('DROP TABLE IF EXISTS cache_locks'); \$pdo->exec('DROP TABLE IF EXISTS cache'); echo 'Repair cleanup done.'; } catch (\Throwable \$e) { echo 'Repair cleanup failed: '.\$e->getMessage(); exit(1); }" 2>&1 || echo "WARNING: repair cleanup did not complete - migrate will run normally." >&2
   fi
+fi
 fi
 
 # Only the primary "backend" container runs migrations/cache warmup; the
