@@ -74,7 +74,6 @@ if [ "${MIGRATE_REPAIR_0001:-false}" = "true" ]; then
     php -r "try { \$pdo = new PDO('${DB_WAIT_DSN}', '${DB_USERNAME}', '${DB_PASSWORD}'); \$pdo->exec('DROP TABLE IF EXISTS sessions'); \$pdo->exec('DROP TABLE IF EXISTS password_reset_tokens'); \$pdo->exec('DROP TABLE IF EXISTS users'); \$pdo->exec('DROP TABLE IF EXISTS cache_locks'); \$pdo->exec('DROP TABLE IF EXISTS cache'); echo 'Repair cleanup done.'; } catch (\Throwable \$e) { echo 'Repair cleanup failed: '.\$e->getMessage(); exit(1); }" 2>&1 || echo "WARNING: repair cleanup did not complete - migrate will run normally." >&2
   fi
 fi
-fi
 
 # Only the primary "backend" container runs migrations/cache warmup; the
 # queue/reverb/scheduler containers share this same image but shouldn't
