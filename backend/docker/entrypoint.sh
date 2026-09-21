@@ -64,14 +64,15 @@ fi
 # leftovers of an interrupted run are ever touched, and only when
 # explicitly enabled: the three first-migration tables, plus the ephemeral
 # cache/cache_locks tables (cache entries and locks rebuild themselves;
-# dropping them can never destroy user data).
+# dropping them can never destroy user data), plus the jobs tables which
+# hold only queue state that rebuilds on retry.
 # NEVER enable on a database holding real data.
 if [ "${MIGRATE_REPAIR_0001:-false}" = "true" ]; then
   if [ -z "${DB_WAIT_DSN:-}" ]; then
     echo "MIGRATE_REPAIR_0001 is set but no database DSN is configured - skipping repair." >&2
   else
-    echo "MIGRATE_REPAIR_0001=true - dropping interrupted early-migration tables (users, password_reset_tokens, sessions, cache, cache_locks)..."
-    php -r "try { \$pdo = new PDO('${DB_WAIT_DSN}', '${DB_USERNAME}', '${DB_PASSWORD}'); \$pdo->exec('DROP TABLE IF EXISTS sessions'); \$pdo->exec('DROP TABLE IF EXISTS password_reset_tokens'); \$pdo->exec('DROP TABLE IF EXISTS users'); \$pdo->exec('DROP TABLE IF EXISTS cache_locks'); \$pdo->exec('DROP TABLE IF EXISTS cache'); echo 'Repair cleanup done.'; } catch (\Throwable \$e) { echo 'Repair cleanup failed: '.\$e->getMessage(); exit(1); }" 2>&1 || echo "WARNING: repair cleanup did not complete - migrate will run normally." >&2
+    echo "MIGRATE_REPAIR_0001=true - dropping interrupted early-migration tables (users, password_reset_tokens, sessions, cache, cache_locks, jobs, job_batches, failed_jobs)..."
+    php -r "try { \$pdo = new PDO('${DB_WAIT_DSN}', '${DB_USERNAME}', '${DB_PASSWORD}'); \$pdo->exec('DROP TABLE IF EXISTS sessions'); \$pdo->exec('DROP TABLE IF EXISTS password_reset_tokens'); \$pdo->exec('DROP TABLE IF EXISTS users'); \$pdo->exec('DROP TABLE IF EXISTS cache_locks'); \$pdo->exec('DROP TABLE IF EXISTS cache'); \$pdo->exec('DROP TABLE IF EXISTS failed_jobs'); \$pdo->exec('DROP TABLE IF EXISTS job_batches'); \$pdo->exec('DROP TABLE IF EXISTS jobs'); echo 'Repair cleanup done.'; } catch (\Throwable \$e) { echo 'Repair cleanup failed: '.\$e->getMessage(); exit(1); }" 2>&1 || echo "WARNING: repair cleanup did not complete - migrate will run normally." >&2
   fi
 fi
 
