@@ -55,6 +55,24 @@ if [ ! -f /var/www/html/storage/.link-created ]; then
   touch /var/www/html/storage/.link-created
 fi
 
+# Opt-in full wipe for poisoned fresh databases on shell-less hosts.
+# When repeated interrupted runs leave tables behind WITHOUT their
+# migration rows, migrate fails migration-by-migration forever (each
+# CREATE hits "already exists", masked as 25P02 on a later ALTER). This
+# block drops every application table leaf-first (foreign-key order, so
+# no CASCADE keyword is ever needed), resets the migrations tracker, and
+# lets the normal `migrate` below rebuild from zero. Requires the exact
+# confirmation value - a bare "true" will NOT trigger it. NEVER enable on
+# a database holding real data; remove the variable right after recovery.
+if [ "${MIGRATE_FRESH_REBUILD:-false}" = "wipe-and-rebuild" ]; then
+  if [ -z "${DB_WAIT_DSN:-}" ]; then
+    echo "MIGRATE_FRESH_REBUILD is set but no database DSN is configured - aborting." >&2
+    exit 1
+  fi
+  echo "MIGRATE_FRESH_REBUILD confirmed - wiping application tables for a clean rebuild..."
+  php -r "try { \$pdo = new PDO('${DB_WAIT_DSN}', '${DB_USERNAME}', '${DB_PASSWORD}'); foreach (['room_seats', 'call_participants', 'call_sessions', 'quran_bookmarks', 'quran_progress', 'quran_audio', 'quran_surah_audio', 'quran_translations', 'event_registrations', 'message_reactions', 'message_attachments', 'messages', 'conversation_participants', 'announcements', 'events', 'reports', 'ayahs', 'notifications', 'hadiths', 'duas', 'surahs', 'quran_reciters', 'conversations', 'personal_access_tokens', 'password_reset_tokens', 'sessions', 'users', 'jobs', 'job_batches', 'failed_jobs', 'cache', 'cache_locks'] as \$t) { \$pdo->exec('DROP TABLE IF EXISTS '.\$t); } \$pdo->exec('DELETE FROM migrations'); echo 'Wipe complete - schema will rebuild from zero.'; } catch (\Throwable \$e) { echo 'WIPE FAILED: '.\$e->getMessage(); exit(1); }" 2>&1 || { echo "Wipe did not complete - aborting before migrate." >&2; exit 1; }
+fi
+
 # Only the primary "backend" container runs migrations/cache warmup; the
 # queue/reverb/scheduler containers share this same image but shouldn't
 # race each other to migrate on every restart.
