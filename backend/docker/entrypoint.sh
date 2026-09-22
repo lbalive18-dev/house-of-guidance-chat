@@ -55,27 +55,6 @@ if [ ! -f /var/www/html/storage/.link-created ]; then
   touch /var/www/html/storage/.link-created
 fi
 
-# Opt-in repair for interrupted early runs on shell-less hosts.
-# Runs HERE — after the database wait, before `php artisan migrate` — in
-# plain shell with autocommit statements, deliberately OUTSIDE any Laravel
-# migration transaction. (A repair placed inside a migration cannot work:
-# PostgreSQL aborts the whole transaction on the first error, so even the
-# cleanup DROP fails with 25P02.) Only tables that can exist solely as
-# leftovers of an interrupted run are ever touched, and only when
-# explicitly enabled: the three first-migration tables, plus the ephemeral
-# cache/cache_locks tables (cache entries and locks rebuild themselves;
-# dropping them can never destroy user data), plus the jobs tables which
-# hold only queue state that rebuilds on retry.
-# NEVER enable on a database holding real data.
-if [ "${MIGRATE_REPAIR_0001:-false}" = "true" ]; then
-  if [ -z "${DB_WAIT_DSN:-}" ]; then
-    echo "MIGRATE_REPAIR_0001 is set but no database DSN is configured - skipping repair." >&2
-  else
-    echo "MIGRATE_REPAIR_0001=true - dropping interrupted early-migration tables (users, password_reset_tokens, sessions, cache, cache_locks, jobs, job_batches, failed_jobs)..."
-    php -r "try { \$pdo = new PDO('${DB_WAIT_DSN}', '${DB_USERNAME}', '${DB_PASSWORD}'); \$pdo->exec('DROP TABLE IF EXISTS sessions'); \$pdo->exec('DROP TABLE IF EXISTS password_reset_tokens'); \$pdo->exec('DROP TABLE IF EXISTS users'); \$pdo->exec('DROP TABLE IF EXISTS cache_locks'); \$pdo->exec('DROP TABLE IF EXISTS cache'); \$pdo->exec('DROP TABLE IF EXISTS failed_jobs'); \$pdo->exec('DROP TABLE IF EXISTS job_batches'); \$pdo->exec('DROP TABLE IF EXISTS jobs'); try { \$pdo->exec(\"DELETE FROM migrations WHERE migration IN ('0001_01_01_000000_create_users_table', '0001_01_01_000001_create_cache_table', '0001_01_01_000002_create_jobs_table')\"); echo 'Repair migration rows reset.'; } catch (\Throwable \$d) { echo 'Repair migration reset skipped (migrations table missing or unreadable): '.\$d->getMessage(); } echo 'Repair cleanup done.'; } catch (\Throwable \$e) { echo 'Repair cleanup failed: '.\$e->getMessage(); exit(1); }" 2>&1 || echo "WARNING: repair cleanup did not complete - migrate will run normally." >&2
-  fi
-fi
-
 # Only the primary "backend" container runs migrations/cache warmup; the
 # queue/reverb/scheduler containers share this same image but shouldn't
 # race each other to migrate on every restart.
