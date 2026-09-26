@@ -6,6 +6,7 @@ import Avatar from '@/components/ui/Avatar';
 import TextField from '@/components/ui/TextField';
 import { useAuthStore } from '@/store/authStore';
 import { deleteAvatar, updatePassword, updateProfile } from '@/lib/authApi';
+import { apiErrorMessage } from '@/lib/apiError';
 
 interface ProfileForm {
   name: string;
@@ -49,8 +50,8 @@ export default function ProfileSettings() {
       const updated = await updateProfile({ avatar: file });
       setUser(updated);
       toast.success('Profile picture updated.');
-    } catch {
-      toast.error('Could not upload profile picture.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Could not upload profile picture.'));
     } finally {
       setUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

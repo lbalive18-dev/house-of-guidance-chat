@@ -89,11 +89,6 @@ class CallController extends Controller
             ? CallSession::TYPE_ROOM
             : ($conversation->type === 'private' ? CallSession::TYPE_PRIVATE : CallSession::TYPE_GROUP);
 
-        // Room calls are started by room owners/admins; everyone else joins.
-        if ($type === CallSession::TYPE_ROOM) {
-            abort_unless($conversation->isRoomAdmin($user), 403, 'Only room admins can start a room call.');
-        }
-
         $session = DB::transaction(function () use ($conversation, $user, $request, $type) {
             $session = CallSession::create([
                 'type' => $type,
@@ -126,7 +121,13 @@ class CallController extends Controller
         });
 
         $session->load(['initiator', 'participants.user']);
-        broadcast(new CallInitiated($session))->toOthers();
+        try {
+            broadcast(new CallInitiated($session))->toOthers();
+        } catch (\Throwable $exception) {
+            // Starting the call is committed already. Reverb outages should
+            // not make the caller retry and receive a misleading 409.
+            report($exception);
+        }
 
         return new CallSessionResource($session);
     }

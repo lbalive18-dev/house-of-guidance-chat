@@ -75,8 +75,7 @@ export async function sendAttachmentMessage(
 
   const { data } = await api.post<ChatMessage>(
     `/api/conversations/${conversationId}/messages`,
-    formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    formData
   );
   return data;
 }

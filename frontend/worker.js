@@ -8,9 +8,13 @@ export default {
     const BACKEND_URL = env.BACKEND_URL;
 
     if (
+      url.pathname === "/api" ||
       url.pathname.startsWith("/api/") ||
+      url.pathname === "/sanctum" ||
       url.pathname.startsWith("/sanctum/") ||
+      url.pathname === "/broadcasting" ||
       url.pathname.startsWith("/broadcasting/") ||
+      url.pathname === "/storage" ||
       url.pathname.startsWith("/storage/")
     ) {
       if (!BACKEND_URL) {

@@ -19,8 +19,8 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/90 backdrop-blur dark:border-gray-800 dark:bg-surface-dark/90">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
+    <header className="sticky top-0 z-40 border-b border-emerald-950/5 bg-white/90 shadow-[0_4px_24px_rgba(15,63,48,0.04)] backdrop-blur-xl dark:border-white/5 dark:bg-surface-dark/90">
+      <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between px-4 md:px-8">
         <Link to="/" className="flex items-center gap-2.5">
           <span
             className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-secondary"
@@ -45,7 +45,7 @@ export default function Navbar() {
             type="button"
             onClick={toggleTheme}
             aria-label="Toggle dark mode"
-            className="flex h-10 w-10 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary dark:text-gray-400 dark:hover:bg-primary-900/40"
+            className="flex h-10 w-10 items-center justify-center rounded-2xl text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary dark:text-gray-400 dark:hover:bg-primary-900/40"
           >
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>

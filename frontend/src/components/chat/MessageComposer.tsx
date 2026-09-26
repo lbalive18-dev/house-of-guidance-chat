@@ -4,6 +4,7 @@ import { Mic, Paperclip, Send, Smile, Square, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTheme } from '@/context/ThemeContext';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+import { apiErrorMessage } from '@/lib/apiError';
 import { sendAttachmentMessage, sendTextMessage, sendTyping } from '@/lib/chatApi';
 import { formatDuration } from '@/lib/format';
 import ReplyPreviewBar from '@/components/chat/ReplyPreviewBar';
@@ -65,8 +66,8 @@ export default function MessageComposer({
       });
       onMessageSent(message);
       onCancelReply();
-    } catch {
-      toast.error('Could not send your message.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Could not send your message.'));
       setText(body);
     } finally {
       setSending(false);
@@ -92,8 +93,8 @@ export default function MessageComposer({
       });
       onMessageSent(message);
       onCancelReply();
-    } catch {
-      toast.error('Could not send that file.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Could not send that file.'));
     } finally {
       setSending(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -123,15 +124,15 @@ export default function MessageComposer({
       });
       onMessageSent(message);
       onCancelReply();
-    } catch {
-      toast.error('Could not send the voice note.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Could not send the voice note.'));
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <div className="border-t border-gray-100 bg-white dark:border-gray-800 dark:bg-surface-dark">
+    <div className="border-t border-emerald-950/5 bg-white/95 shadow-[0_-8px_28px_rgba(15,63,48,0.04)] backdrop-blur dark:border-gray-800 dark:bg-surface-dark/95">
       {replyingTo && <ReplyPreviewBar message={replyingTo} onCancel={onCancelReply} />}
 
       {recorder.isRecording ? (
@@ -156,7 +157,7 @@ export default function MessageComposer({
           </button>
         </div>
       ) : (
-        <div className="relative flex items-end gap-1.5 px-3 py-2.5">
+        <div className="relative mx-auto flex max-w-5xl items-end gap-1.5 px-3 py-3 md:gap-2 md:px-6">
           {showEmoji && (
             <div className="absolute bottom-full left-2 mb-2 z-30">
               <EmojiPicker
@@ -202,7 +203,7 @@ export default function MessageComposer({
             }}
             placeholder="Type a message…"
             rows={1}
-            className="max-h-32 flex-1 resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            className="max-h-32 flex-1 resize-none rounded-2xl border border-gray-200 bg-[#f7f9f6] px-4 py-3 text-sm shadow-inner focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
           />
 
           {text.trim() ? (

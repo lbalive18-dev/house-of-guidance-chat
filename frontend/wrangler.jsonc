@@ -2,18 +2,26 @@
   "name": "house-of-guidance-chat",
   "main": "worker.js",
   "compatibility_date": "2026-09-13",
-  // BACKEND_URL is set per deploy and intentionally left empty here:
-  // the Worker fails loudly (HTTP 500) rather than proxying auth to a
-  // wrong backend. Oracle path: https://api.<domain>. Render path:
-  // https://<api-service>.onrender.com (or `wrangler deploy --var
-  // BACKEND_URL:https://...` to override without editing this file).
+  // Public Laravel API origin. The Worker proxies API/auth/storage traffic
+  // here; Reverb WebSockets connect directly from the browser to Render.
   "vars": {
-    "BACKEND_URL": ""
+    "BACKEND_URL": "https://house-of-guidance-chat.onrender.com",
   },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": true
-  }
+    // Only API proxy paths invoke Worker code. All frontend assets are served
+    // directly as free static assets instead of counting against Worker quota.
+    "run_worker_first": [
+      "/api",
+      "/api/*",
+      "/sanctum",
+      "/sanctum/*",
+      "/broadcasting",
+      "/broadcasting/*",
+      "/storage",
+      "/storage/*",
+    ],
+  },
 }

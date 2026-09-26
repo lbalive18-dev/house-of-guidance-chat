@@ -105,6 +105,7 @@ export default function HadithLibraryPage() {
   useEffect(() => {
     if (!selected) return;
 
+    let current = true;
     setLoadingList(true);
     const timeout = setTimeout(() => {
       Promise.all([
@@ -117,16 +118,24 @@ export default function HadithLibraryPage() {
         fetchHadithChapters(selected.collection),
       ])
         .then(([res, chapterList]) => {
+          if (!current) return;
           setHadiths(res.data);
           setLastPage(res.meta.last_page);
           setTotal(res.meta.total);
           setChapters(chapterList);
         })
-        .catch(() => setError('Unable to load this collection.'))
-        .finally(() => setLoadingList(false));
+        .catch(() => {
+          if (current) setError('Unable to load this collection.');
+        })
+        .finally(() => {
+          if (current) setLoadingList(false);
+        });
     }, 250);
 
-    return () => clearTimeout(timeout);
+    return () => {
+      current = false;
+      clearTimeout(timeout);
+    };
   }, [selected, chapter, query, page]);
 
   useEffect(() => {
@@ -281,6 +290,7 @@ export default function HadithLibraryPage() {
                     onChange={(e) => {
                       setQuery(e.target.value);
                       setPage(1);
+                      setError('');
                     }}
                     placeholder={`Search ${selected.title_en}…`}
                     className="input-field pl-10"

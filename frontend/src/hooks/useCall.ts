@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getEcho } from '@/lib/echo';
+import { apiErrorMessage } from '@/lib/apiError';
 import {
   acceptCall,
   cancelCall,
@@ -204,7 +205,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
         }
         setLocalStream(stream);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not start the call.');
+        setError(apiErrorMessage(err, 'Could not start the call.'));
         setViewState('failed');
       }
     },

@@ -59,9 +59,21 @@ class MessageController extends Controller
             $file = $request->file('attachment');
             $disk = self::ATTACHMENT_DISKS[$type] ?? 'chat-attachments';
 
+            try {
+                $path = $file->store('', $disk);
+            } catch (\Throwable $exception) {
+                report($exception);
+
+                return response()->json(['message' => 'File storage is temporarily unavailable. Please try again.'], 503);
+            }
+
+            if (! is_string($path) || $path === '') {
+                return response()->json(['message' => 'File storage is temporarily unavailable. Please try again.'], 503);
+            }
+
             $attachmentData = [
                 'disk' => $disk,
-                'path' => $file->store('', $disk),
+                'path' => $path,
                 'original_name' => $file->getClientOriginalName(),
                 'mime_type' => $file->getClientMimeType(),
                 'size_bytes' => $file->getSize(),
@@ -115,12 +127,22 @@ class MessageController extends Controller
             ->get();
 
         foreach ($recipients as $recipient) {
-            $recipient->notify(
-                new NewMessageNotification($message)
-            );
+            try {
+                $recipient->notify(new NewMessageNotification($message));
+            } catch (\Throwable $exception) {
+                // The message is already committed. A notification outage must
+                // not make the sender retry and create a duplicate message.
+                report($exception);
+            }
         }
 
-        broadcast(new MessageSent($message))->toOthers();
+        try {
+            broadcast(new MessageSent($message))->toOthers();
+        } catch (\Throwable $exception) {
+            // Reverb is best-effort; the saved message is returned below and
+            // will appear the next time clients fetch conversation history.
+            report($exception);
+        }
 
         return new MessageResource($message);
     }

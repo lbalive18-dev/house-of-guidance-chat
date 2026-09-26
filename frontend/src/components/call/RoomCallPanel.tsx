@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Armchair, Minus, Phone, Plus } from 'lucide-react';
+import { Armchair, Minus, Phone, Plus, Video } from 'lucide-react';
 import { getEcho } from '@/lib/echo';
 import {
   claimSeat,
@@ -11,6 +11,7 @@ import {
   updateSeatCapacity,
 } from '@/lib/callApi';
 import { useCall } from '@/hooks/useCall';
+import { apiErrorMessage } from '@/lib/apiError';
 import GroupCallView from '@/components/call/GroupCallView';
 import Avatar from '@/components/ui/Avatar';
 import type { RoomCallState } from '@/types/call';
@@ -86,7 +87,7 @@ export default function RoomCallPanel({
       const created = await startCall(conversationId, media);
       await call.adoptSession(created);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not start the room call.');
+      toast.error(apiErrorMessage(err, 'Could not start the room call.'));
     } finally {
       setBusy(false);
       void refreshSeats();
@@ -98,7 +99,7 @@ export default function RoomCallPanel({
       await claimSeat(conversationId, seatNumber);
       await refreshSeats();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not claim that seat.');
+      toast.error(apiErrorMessage(err, 'Could not claim that seat.'));
       await refreshSeats();
     }
   };
@@ -123,7 +124,7 @@ export default function RoomCallPanel({
       toast.success('Seat capacity updated.');
       await refreshSeats();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not update capacity.');
+      toast.error(apiErrorMessage(err, 'Could not update capacity.'));
     }
   };
 
@@ -148,28 +149,22 @@ export default function RoomCallPanel({
 
       {!liveSession && (
         <div className="flex flex-wrap items-center gap-2">
-          {isAdmin ? (
-            <>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleStartRoomCall('audio')}
-                className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-              >
-                <Phone className="h-4 w-4" /> Start audio call
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleStartRoomCall('video')}
-                className="inline-flex items-center gap-1.5 rounded-2xl border px-4 py-2.5 text-sm font-bold disabled:opacity-50"
-              >
-                Start video call
-              </button>
-            </>
-          ) : (
-            <p className="text-sm text-gray-500">Only room admins can start a live session.</p>
-          )}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleStartRoomCall('audio')}
+            className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 disabled:opacity-50"
+          >
+            <Phone className="h-4 w-4" /> Start audio call
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleStartRoomCall('video')}
+            className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 disabled:opacity-50 dark:border-emerald-900 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-emerald-950"
+          >
+            <Video className="h-4 w-4" /> Start video call
+          </button>
         </div>
       )}
 

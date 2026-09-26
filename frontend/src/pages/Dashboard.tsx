@@ -25,7 +25,7 @@ export default function Dashboard() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#f6f8f4] dark:bg-slate-950">
+    <div className="min-h-screen bg-gradient-to-b from-[#fbfcf9] via-[#f6f8f4] to-[#eef4ef] dark:from-slate-950 dark:via-slate-950 dark:to-[#101a14]">
       {/* Welcome Header */}
       <section className="geometric-motif border-b border-gray-100 dark:border-gray-800">
         <div className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-10">
@@ -55,7 +55,7 @@ export default function Dashboard() {
             />
 
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 md:text-2xl">
+              <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-50 md:text-2xl">
                 As-salamu alaykum, {(user.name ?? 'User').split(' ')[0]}
               </h1>
 
@@ -85,7 +85,7 @@ export default function Dashboard() {
 
       <main className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
         {/* Featured Quran */}
-        <section className="relative mb-8 overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#07382d] via-[#0b5a45] to-[#063127] text-white shadow-xl">
+        <section className="relative mb-8 overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#07382d] via-[#0b5a45] to-[#063127] text-white shadow-[0_24px_60px_rgba(7,56,45,0.2)] ring-1 ring-emerald-950/10">
           {/* Decorative shapes */}
           <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-300/10 blur-3xl" />
           <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-200/10 blur-3xl" />

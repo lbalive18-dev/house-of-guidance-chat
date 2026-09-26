@@ -89,9 +89,7 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<User
     if (value !== undefined) formData.append(key, value as string | Blob);
   });
 
-  const { data } = await api.post<User>('/api/profile', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const { data } = await api.post<User>('/api/profile', formData);
   return data;
 }
 

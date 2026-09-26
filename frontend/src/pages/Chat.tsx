@@ -198,8 +198,8 @@ export default function Chat() {
   if (!id) return null;
 
   return (
-    <div className="flex h-screen flex-col bg-white dark:bg-surface-dark">
-      <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+    <div className="flex h-[100dvh] flex-col bg-[#f7f9f6] dark:bg-surface-dark">
+      <div className="z-10 flex items-center gap-3 border-b border-emerald-950/5 bg-white/95 px-4 py-3 shadow-sm backdrop-blur dark:border-gray-800 dark:bg-surface-dark/95">
         <Link to="/" className="rounded-full p-1.5 text-gray-500 hover:bg-primary-50 dark:hover:bg-primary-900/30">
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -281,7 +281,7 @@ export default function Chat() {
         </div>
       )}
 
-      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto py-3">
+      <div ref={scrollRef} onScroll={handleScroll} className="geometric-motif flex-1 overflow-y-auto py-4 md:py-6">
         {loading && (
           <div className="flex h-full items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />

@@ -16,7 +16,7 @@ import {
   Scroll,
   Calendar,
 } from 'lucide-react';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/store/authStore';
 
 export default function Sidebar() {
   const location = useLocation();

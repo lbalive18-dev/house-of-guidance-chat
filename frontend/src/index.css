@@ -45,7 +45,7 @@ body {
   }
 
   .card {
-    @apply rounded-2xl border border-gray-100 bg-white shadow-card dark:border-gray-800 dark:bg-gray-900;
+    @apply rounded-2xl border border-[#e8eee9] bg-white shadow-card dark:border-gray-800 dark:bg-gray-900;
   }
 
   .input-field {
@@ -54,6 +54,16 @@ body {
       focus:ring-primary-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100
       dark:placeholder:text-gray-500 dark:focus:ring-primary-900;
   }
+}
+
+* {
+  scrollbar-color: rgba(11, 110, 79, 0.28) transparent;
+  scrollbar-width: thin;
+}
+
+::selection {
+  color: #07382d;
+  background: rgba(212, 175, 55, 0.28);
 }
 
 /* Subtle Islamic geometric motif used sparingly behind headers, never as noisy decoration */

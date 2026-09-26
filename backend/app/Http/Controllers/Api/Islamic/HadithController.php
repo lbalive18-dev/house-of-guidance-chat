@@ -28,8 +28,31 @@ class HadithController extends Controller
             ->when($request->filled('collection'), fn ($q) => $q->where('collection', $request->string('collection')))
             ->when($request->filled('category'), fn ($q) => $q->where('category', $request->string('category')))
             ->when($request->filled('q'), function ($q) use ($request) {
-                $term = (string) $request->string('q');
-                $q->where(fn ($sub) => $sub->whereLikeInsensitive('text', $term)->whereLikeInsensitive('narrator', $term, 'or'));
+                $term = trim((string) $request->string('q'));
+
+                if ($term === '') {
+                    return;
+                }
+
+                $q->where(function ($sub) use ($term) {
+                    foreach ([
+                        'text',
+                        'arabic_text',
+                        'narrator',
+                        'reference',
+                        'grade',
+                        'chapter',
+                        'category',
+                        'source_collection',
+                    ] as $index => $column) {
+                        $sub->whereLikeInsensitive($column, $term, $index === 0 ? 'and' : 'or');
+                    }
+
+                    if (ctype_digit($term)) {
+                        $sub->orWhere('hadith_number', (int) $term)
+                            ->orWhere('source_number', (int) $term);
+                    }
+                });
             })
             ->when($request->filled('chapter'), fn ($q) => $q->where('chapter', $request->string('chapter')))
             ->orderByRaw('hadith_number IS NULL')

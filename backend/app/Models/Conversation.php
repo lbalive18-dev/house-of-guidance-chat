@@ -69,10 +69,48 @@ class Conversation extends Model
 
     public function activeCallSession(): ?CallSession
     {
-        return $this->callSessions()
+        $now = now();
+        $staleAfter = $now->copy()->subSeconds(120);
+        $sessions = $this->callSessions()
             ->whereIn('status', [CallSession::STATUS_RINGING, CallSession::STATUS_ACTIVE])
             ->latest()
-            ->first();
+            ->get();
+
+        foreach ($sessions as $session) {
+            $ringingTooLong = $session->status === CallSession::STATUS_RINGING
+                && $session->created_at?->lt($staleAfter);
+
+            $hasRecentParticipant = $session->participants()
+                ->where('status', CallParticipant::STATUS_JOINED)
+                ->where(function ($query) use ($staleAfter) {
+                    $query->where('last_heartbeat_at', '>=', $staleAfter)
+                        ->orWhere(function ($query) use ($staleAfter) {
+                            $query->whereNull('last_heartbeat_at')
+                                ->where('joined_at', '>=', $staleAfter);
+                        });
+                })
+                ->exists();
+
+            $activeWithoutRecentParticipants = $session->status === CallSession::STATUS_ACTIVE
+                && ! $hasRecentParticipant;
+
+            if (! $ringingTooLong && ! $activeWithoutRecentParticipants) {
+                return $session;
+            }
+
+            $session->update([
+                'status' => CallSession::STATUS_ENDED,
+                'ended_at' => $now,
+            ]);
+
+            // Stale room seats otherwise remain displayed as occupied after
+            // the last call participant has disappeared.
+            if ($session->type === CallSession::TYPE_ROOM) {
+                RoomSeat::where('conversation_id', $this->id)->delete();
+            }
+        }
+
+        return null;
     }
 
     public function seats(): HasMany

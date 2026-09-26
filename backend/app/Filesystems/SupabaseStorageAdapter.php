@@ -45,9 +45,33 @@ class SupabaseStorageAdapter implements FilesystemAdapter
 
     public function publicUrl(string $path): string
     {
-        $base = rtrim($this->publicUrl !== '' ? $this->publicUrl : $this->baseUrl.'/storage/v1/object/public', '/');
+        return $this->getUrl($path);
+    }
 
-        return $base.'/'.$this->bucket.'/'.$this->prefixer->prefixPath(ltrim($path, '/'));
+    /**
+     * Laravel's FilesystemAdapter::url() looks for getUrl() on custom
+     * Flysystem adapters. Disk URL values already include their bucket and
+     * folder prefix, so append only the relative object path here.
+     */
+    public function getUrl(string $path): string
+    {
+        $relativePath = ltrim($path, '/');
+        $prefix = trim($this->prefixer->prefixPath(''), '/');
+
+        // Laravel prepends each disk's `prefix` before calling getUrl(). The
+        // configured public URL already contains that folder for production.
+        if ($prefix !== '' && str_starts_with($relativePath, $prefix.'/')) {
+            $relativePath = substr($relativePath, strlen($prefix) + 1);
+        }
+
+        $base = rtrim(
+            $this->publicUrl !== ''
+                ? $this->publicUrl
+                : $this->baseUrl.'/storage/v1/object/public/'.$this->bucket,
+            '/'
+        );
+
+        return $base.'/'.$relativePath;
     }
 
     public function fileExists(string $path): bool
