@@ -125,7 +125,7 @@ class DuaSeeder extends Seeder
         ];
 
         foreach ($duas as $dua) {
-            Dua::create($dua);
+            Dua::firstOrCreate(['title' => $dua['title']], $dua);
         }
     }
 }

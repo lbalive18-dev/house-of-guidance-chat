@@ -32,20 +32,62 @@ class SeedIfFresh extends Command
             }
         }
 
-        $existing = (int) DB::table('users')->count()
-            + (int) DB::table('surahs')->count()
-            + (int) DB::table('hadiths')->count();
-
-        if ($existing > 0) {
-            $this->info('Database already holds data — skipping seed.');
+        if ($this->seedDataIsComplete()) {
+            $this->info('Starter data is already complete — skipping seed.');
 
             return self::SUCCESS;
         }
 
-        $this->info('Fresh database detected — seeding...');
-        $this->call('db:seed', ['--force' => true]);
+        $this->info('Starter data is missing or incomplete — seeding or resuming...');
+        $exitCode = $this->call('db:seed', ['--force' => true]);
+
+        if ($exitCode !== self::SUCCESS || ! $this->seedDataIsComplete()) {
+            $this->error('Starter data seeding did not complete. It will be retried on the next boot.');
+
+            return self::FAILURE;
+        }
+
         $this->info('Seed complete.');
 
         return self::SUCCESS;
+    }
+
+    private function seedDataIsComplete(): bool
+    {
+        foreach (config('hadith_books.books', []) as $book) {
+            if (! DB::table('hadiths')
+                ->where('collection', $book['collection'])
+                ->whereNotNull('hadith_number')
+                ->exists()) {
+                return false;
+            }
+        }
+
+        $reciterId = DB::table('quran_reciters')
+            ->where('slug', 'mishary-rashid-alafasy')
+            ->value('id');
+
+        if (! $reciterId) {
+            return false;
+        }
+
+        return DB::table('duas')->count() >= 14
+            && DB::table('hadiths')->whereNull('hadith_number')->count() >= 16
+            && DB::table('surahs')->count() === 114
+            && DB::table('ayahs')->count() === 6236
+            && DB::table('quran_translations')
+                ->where('language', 'en')
+                ->where('translator', 'Mohammed Marmaduke Pickthall')
+                ->count() === 6236
+            && DB::table('quran_audio')
+                ->where('quran_reciter_id', $reciterId)
+                ->count() === 6236
+            && DB::table('quran_surah_audio')
+                ->where('quran_reciter_id', $reciterId)
+                ->count() === 114
+            && DB::table('conversations')
+                ->whereIn('room_type', ['discussion', 'tajweed', 'hifdh', 'arabic', 'ask_sheikh'])
+                ->distinct()
+                ->count('room_type') === 5;
     }
 }

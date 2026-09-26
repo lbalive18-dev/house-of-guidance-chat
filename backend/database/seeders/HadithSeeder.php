@@ -125,7 +125,7 @@ class HadithSeeder extends Seeder
         ];
 
         foreach ($hadiths as $hadith) {
-            Hadith::create($hadith);
+            Hadith::firstOrCreate($hadith);
         }
     }
 }

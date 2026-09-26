@@ -23,6 +23,8 @@ services:
         value: true
       - key: DB_CONNECTION
         value: pgsql
+      # Use the provider's direct PostgreSQL hostname for migrations.
+      # For Neon, turn off connection pooling (the hostname must omit -pooler).
       - key: DB_HOST
         sync: false
       - key: DB_PORT
