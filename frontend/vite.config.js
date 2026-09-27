@@ -7,28 +7,28 @@ export default defineConfig({
         react(),
         VitePWA({
             registerType: 'autoUpdate',
-            includeAssets: ['icons/favicon.svg', 'icons/apple-touch-icon.png'],
+            includeAssets: ['hog-logo.png'],
             manifest: {
                 name: 'House of Guidance Chat',
                 short_name: 'HoG Chat',
                 description: 'House of Guidance Chat — seeking knowledge for the pleasure of Allah.',
-                theme_color: '#0B6E4F',
-                background_color: '#FFFFFF',
+                theme_color: '#041B15',
+                background_color: '#041B15',
                 display: 'standalone',
                 start_url: '/',
                 icons: [
                     {
-                        src: '/icons/icon-192.png',
+                        src: '/hog-logo.png',
                         sizes: '192x192',
                         type: 'image/png',
                     },
                     {
-                        src: '/icons/icon-512.png',
+                        src: '/hog-logo.png',
                         sizes: '512x512',
                         type: 'image/png',
                     },
                     {
-                        src: '/icons/icon-512-maskable.png',
+                        src: '/hog-logo.png',
                         sizes: '512x512',
                         type: 'image/png',
                         purpose: 'maskable',

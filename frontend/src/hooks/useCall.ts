@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getEcho } from '@/lib/echo';
 import { apiErrorMessage } from '@/lib/apiError';
+import { unlockCallAudio, useRingtone } from '@/hooks/useRingtone';
 import {
   acceptCall,
   cancelCall,
@@ -33,6 +34,8 @@ import type {
 const HEARTBEAT_MS = 30000;
 const PRIVATE_CALL_RING_TIMEOUT_MS = 45000;
 const PRIVATE_CALL_STATUS_POLL_MS = 5000;
+const GROUP_CALL_STATUS_POLL_MS = 5000;
+const CONNECTING_RECOVERY_POLL_MS = 6000;
 
 interface UseCallOptions {
   conversationId: number | undefined;
@@ -65,9 +68,18 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
   const transportRef = useRef<MeshTransport | null>(null);
   const sessionRef = useRef<CallSession | null>(null);
   const pendingOffers = useRef(new Map<number, RTCSessionDescriptionInit>());
+  const offerRetryTimers = useRef(new Map<number, number>());
   const mountedRef = useRef(true);
 
   sessionRef.current = session;
+
+  useRingtone(viewState === 'outgoing' && session?.status === 'ringing', 'outgoing');
+
+  const clearOfferRetry = useCallback((userId: number) => {
+    const timer = offerRetryTimers.current.get(userId);
+    if (timer !== undefined) window.clearTimeout(timer);
+    offerRetryTimers.current.delete(userId);
+  }, []);
 
   const refreshSession = useCallback(async (sessionId: number) => {
     try {
@@ -90,6 +102,8 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
     });
     setRemotePeers([]);
     pendingOffers.current.clear();
+    for (const timer of offerRetryTimers.current.values()) window.clearTimeout(timer);
+    offerRetryTimers.current.clear();
   }, []);
 
   const leaveQuietly = useCallback((sessionId: number) => {
@@ -152,16 +166,40 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
           }
         },
         onSignalSend: (toUserId, signalType, payload) => {
-          sendSignal(sessionId, { to_user_id: toUserId, signal_type: signalType, payload }).catch(() => {
+          const envelope = { to_user_id: toUserId, signal_type: signalType, payload } as const;
+          sendSignal(sessionId, envelope).catch(() => {
             // Signaling is fire-and-forget; ICE retries and re-offers cover drops.
           });
+
+          // The callee enters the call after accepting. Retry the same offer
+          // briefly so a slow Reverb subscription cannot lose negotiation.
+          if (signalType === 'offer' && toUserId !== null) {
+            clearOfferRetry(toUserId);
+            let attempts = 0;
+            const retry = () => {
+              if (
+                !mountedRef.current ||
+                sessionRef.current?.id !== sessionId ||
+                transportRef.current?.connectionState(toUserId) === 'connected' ||
+                attempts >= 5
+              ) {
+                clearOfferRetry(toUserId);
+                return;
+              }
+
+              attempts += 1;
+              void sendSignal(sessionId, envelope).catch(() => undefined);
+              offerRetryTimers.current.set(toUserId, window.setTimeout(retry, 1500));
+            };
+            offerRetryTimers.current.set(toUserId, window.setTimeout(retry, 1200));
+          }
         },
       });
 
       transportRef.current = transport;
       return transport;
     },
-    [currentUserId],
+    [clearOfferRetry, currentUserId],
   );
 
   const processPendingOffers = useCallback(async () => {
@@ -200,6 +238,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
 
   const begin = useCallback(
     async (media: CallMedia) => {
+      unlockCallAudio();
       if (!conversationId) return;
       setError('');
       let created: CallSession | null = null;
@@ -557,6 +596,98 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
     viewState,
   ]);
 
+  // Group/room outgoing recovery: Reverb join events can be missed while a
+  // subscription reconnects. Poll for newly-joined peers and offer to them
+  // so a slow bus cannot strand a live circle. Unlike private calls there is
+  // no auto-cancel timeout — room calls intentionally persist.
+  useEffect(() => {
+    if (
+      viewState !== 'outgoing' ||
+      outgoingSessionStatus !== 'ringing' ||
+      outgoingSessionType === 'private' ||
+      outgoingSessionType === undefined ||
+      outgoingInitiatorId !== currentUserId ||
+      outgoingSessionId === undefined
+    ) {
+      return;
+    }
+
+    let stopped = false;
+    const sessionId = outgoingSessionId;
+
+    const checkJoined = async () => {
+      const fresh = await refreshSession(sessionId);
+      if (stopped || !fresh) return;
+
+      const anyoneJoined = fresh.participants?.some(
+        (participant) => participant.user_id !== currentUserId && participant.status === 'joined',
+      );
+
+      if (fresh.status === 'active' || anyoneJoined) {
+        setViewState('connecting');
+        await offerToJoinedPeers(fresh);
+      } else {
+        // Still ringing with nobody joined — keep the local offer retry
+        // timers alive by re-offering to any joined peer snapshot.
+        await offerToJoinedPeers(fresh);
+      }
+    };
+
+    const poll = window.setInterval(() => {
+      void checkJoined();
+    }, GROUP_CALL_STATUS_POLL_MS);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(poll);
+    };
+  }, [
+    currentUserId,
+    offerToJoinedPeers,
+    outgoingInitiatorId,
+    outgoingSessionId,
+    outgoingSessionStatus,
+    outgoingSessionType,
+    refreshSession,
+    viewState,
+  ]);
+
+  // Connecting-state recovery (all call types): if signalling was lost, the
+  // UI can sit in "connecting" with joined peers but no peer connection.
+  // Periodically re-sync the session and re-offer — makeOffer is a safe
+  // no-op when negotiation is already stable or in flight.
+  useEffect(() => {
+    if (viewState !== 'connecting' || outgoingSessionId === undefined) {
+      return;
+    }
+
+    let stopped = false;
+    const sessionId = outgoingSessionId;
+
+    const recover = async () => {
+      if (stopped) return;
+      // Skip once media is actually flowing.
+      if (transportRef.current) {
+        const ids = transportRef.current.peerIds();
+        if (ids.some((id) => transportRef.current?.connectionState(id) === 'connected')) return;
+      }
+      const fresh = await refreshSession(sessionId);
+      if (stopped || !fresh) return;
+      if (sessionRef.current?.id !== sessionId) return;
+      await processPendingOffers();
+      await offerToJoinedPeers(fresh);
+    };
+
+    const poll = window.setInterval(() => {
+      void recover();
+    }, CONNECTING_RECOVERY_POLL_MS);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(poll);
+    };
+  }, [offerToJoinedPeers, outgoingSessionId, processPendingOffers, refreshSession, viewState]);
+
   // ---- realtime signaling --------------------------------------------------
 
   useEffect(() => {
@@ -613,6 +744,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
 
     const onParticipantLeft = (payload: { session_id: number; user_id: number }) => {
       if (sessionRef.current?.id !== payload.session_id) return;
+      clearOfferRetry(payload.user_id);
       transportRef.current?.removePeer(payload.user_id);
       setRemotePeers((current) => current.filter((p) => p.userId !== payload.user_id));
       void refreshSession(payload.session_id);
@@ -625,6 +757,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
 
     const onDeclined = (payload: { session_id: number; user_id: number }) => {
       if (sessionRef.current?.id !== payload.session_id) return;
+      clearOfferRetry(payload.user_id);
       void refreshSession(payload.session_id);
     };
 
@@ -676,6 +809,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
               type: 'offer',
             });
           } else if (payload.signal_type === 'answer') {
+            clearOfferRetry(payload.from_user_id);
             await transport.handleAnswer(payload.from_user_id, {
               sdp: payload.payload.sdp as string,
               type: 'answer',
@@ -711,7 +845,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
         }
       }
     };
-  }, [conversationId, currentUserId, offerToJoinedPeers, refreshSession, teardownMedia]);
+  }, [clearOfferRetry, conversationId, currentUserId, offerToJoinedPeers, refreshSession, teardownMedia]);
 
   // Signaling and API acceptance only mean the peers exchanged setup data.
   // Mark a call live only after an actual peer connection is established.

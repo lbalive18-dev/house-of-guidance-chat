@@ -16,7 +16,7 @@ interface ThemeContextValue {
   setTheme: (theme: Theme) => void;
 }
 
-const STORAGE_KEY = 'hog-chat-theme';
+const STORAGE_KEY = 'hog-chat-theme-v2';
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
@@ -24,9 +24,9 @@ function getPreferredTheme(): Theme {
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (stored === 'light' || stored === 'dark') return stored;
 
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light';
+  // The emerald-and-gold brand is designed for dark surfaces; keep explicit
+  // user preference if one exists, and use the branded theme for first visits.
+  return 'dark';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

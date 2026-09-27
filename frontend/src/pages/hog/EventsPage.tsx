@@ -11,6 +11,7 @@ import {
   unregisterFromEvent,
 } from '@/lib/eventsApi';
 import type { EventType, HogEvent } from '@/types/hog';
+import { apiErrorMessage } from '@/lib/apiError';
 
 const TYPE_LABELS: Record<EventType, string> = {
   seminar: 'Seminar',
@@ -30,6 +31,7 @@ export default function EventsPage() {
     setLoading(true);
     fetchEvents({ upcoming_only: true })
       .then((res) => setEvents(res.data))
+      .catch((error) => toast.error(apiErrorMessage(error, 'Could not load events.')))
       .finally(() => setLoading(false));
   };
 
@@ -213,8 +215,8 @@ function EventForm({
         capacity: capacity ? Number(capacity) : undefined,
       });
       onCreated(event);
-    } catch {
-      toast.error('Could not create the event.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Could not create the event.'));
     } finally {
       setSubmitting(false);
     }
@@ -252,6 +254,7 @@ function EventForm({
           type="datetime-local"
           value={startsAt}
           onChange={(e) => setStartsAt(e.target.value)}
+        min={new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16)}
           className="input-field"
         />
       </div>

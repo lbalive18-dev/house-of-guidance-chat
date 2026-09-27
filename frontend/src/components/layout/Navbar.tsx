@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LogOut, Moon, Settings, ShieldCheck, Sun } from 'lucide-react';
+import { BookOpenText, CalendarDays, Home, LogOut, Moon, Settings, ShieldCheck, Sun, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuthStore } from '@/store/authStore';
@@ -21,16 +21,8 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-emerald-950/5 bg-white/90 shadow-[0_4px_24px_rgba(15,63,48,0.04)] backdrop-blur-xl dark:border-white/5 dark:bg-surface-dark/90">
       <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between px-4 md:px-8">
-        <Link to="/" className="flex items-center gap-2.5">
-          <span
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-secondary"
-            aria-hidden="true"
-          >
-            {/* Logo placeholder: replace with the House of Guidance emblem */}
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-              <path d="M12 2L2 8l10 6 10-6-10-6zM2 16l10 6 10-6M2 12l10 6 10-6" />
-            </svg>
-          </span>
+        <Link to="/" className="flex min-w-0 items-center gap-2.5">
+          <img src="/hog-logo.png" alt="House of Guidance" className="h-10 w-10 shrink-0 rounded-full object-contain ring-1 ring-secondary/40" />
           <span className="text-base font-bold leading-tight text-primary dark:text-primary-200">
             House of Guidance
             <span className="block text-[11px] font-medium tracking-wide text-secondary-600 dark:text-secondary-300">
@@ -38,6 +30,19 @@ export default function Navbar() {
             </span>
           </span>
         </Link>
+
+        <nav aria-label="Main navigation" className="hidden items-center gap-1 lg:flex">
+          {[
+            { to: '/', label: 'Home', icon: Home },
+            { to: '/rooms', label: 'Rooms', icon: Users },
+            { to: '/islamic/quran', label: 'Qur’an', icon: BookOpenText },
+            { to: '/events', label: 'Events', icon: CalendarDays },
+          ].map(({ to, label, icon: Icon }) => (
+            <Link key={to} to={to} className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-gray-500 transition hover:bg-primary-50 hover:text-primary dark:text-emerald-50/70 dark:hover:bg-emerald-900/50 dark:hover:text-secondary-200">
+              <Icon className="h-4 w-4" />{label}
+            </Link>
+          ))}
+        </nav>
 
         <div className="flex items-center gap-2">
           {user && <NotificationsBell />}

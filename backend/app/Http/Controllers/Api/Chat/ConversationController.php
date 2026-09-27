@@ -21,6 +21,10 @@ class ConversationController extends Controller
 
         $conversations = $user->conversations()
             ->wherePivotNull('left_at')
+            ->where(function ($query) {
+                $query->whereNull('conversations.room_type')
+                    ->orWhereIn('conversations.name', ['Quran Room', 'Yassarna Room']);
+            })
             ->with(['latestMessage.sender', 'participants'])
             ->orderByDesc('last_message_at')
             ->paginate($this->perPage($request, 20));

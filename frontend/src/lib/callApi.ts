@@ -6,6 +6,11 @@ export async function fetchIceServers(): Promise<RTCConfiguration> {
   return { iceServers: data.ice_servers };
 }
 
+export async function fetchIncomingCall(): Promise<CallSession | null> {
+  const { data } = await api.get<{ session: CallSession | null }>('/api/calls/incoming');
+  return data.session;
+}
+
 export async function startCall(conversationId: number, media: CallMedia): Promise<CallSession> {
   const { data } = await api.post<CallSession>('/api/calls/start', {
     conversation_id: conversationId,

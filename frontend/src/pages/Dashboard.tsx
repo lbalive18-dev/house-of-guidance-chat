@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import {
   ArrowRight,
   BookOpen,
@@ -20,7 +21,13 @@ import CommunityQuickLinks from '@/components/hog/CommunityQuickLinks';
 
 export default function Dashboard() {
   const user = useAuthStore((s) => s.user);
+  const location = useLocation();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+
+  useEffect(() => {
+    if (location.hash !== '#messages') return;
+    window.requestAnimationFrame(() => document.getElementById('messages')?.scrollIntoView({ behavior: 'smooth' }));
+  }, [location.hash]);
 
   if (!user) return null;
 
@@ -191,7 +198,7 @@ export default function Dashboard() {
         </section>
 
         {/* Recent Chats */}
-        <section>
+        <section id="messages" className="scroll-mt-24">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Recent chats

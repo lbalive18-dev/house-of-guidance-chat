@@ -68,6 +68,32 @@ class CallController extends Controller
         return new CallSessionResource($session);
     }
 
+    /**
+     * Recover an incoming ring if the browser missed the Reverb event while
+     * its private-channel subscription was connecting or reconnecting.
+     */
+    public function incoming(Request $request)
+    {
+        $session = CallSession::query()
+            ->where(function ($query) {
+                $query->where('status', CallSession::STATUS_ACTIVE)
+                    ->orWhere(function ($query) {
+                        $query->where('status', CallSession::STATUS_RINGING)
+                            ->where('created_at', '>=', now()->subSeconds(60));
+                    });
+            })
+            ->whereHas('participants', fn ($query) => $query
+                ->where('user_id', $request->user()->id)
+                ->where('status', CallParticipant::STATUS_INVITED))
+            ->with(['initiator', 'participants.user'])
+            ->latest()
+            ->first();
+
+        return response()->json([
+            'session' => $session ? (new CallSessionResource($session))->resolve() : null,
+        ]);
+    }
+
     public function show(Request $request, CallSession $session)
     {
         $this->authorizeCallMember($request, $session);

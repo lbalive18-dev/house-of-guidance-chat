@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 
 class RoomController extends Controller
 {
+    private const AVAILABLE_ROOM_NAMES = ['Quran Room', 'Yassarna Room'];
+
     /**
      * Every public House of Guidance room (Tajweed, Hifdh, Arabic,
      * Ask the Sheikh, general Discussion), regardless of whether the
@@ -17,6 +19,7 @@ class RoomController extends Controller
     public function index(Request $request)
     {
         $rooms = Conversation::publicRooms()
+            ->whereIn('name', self::AVAILABLE_ROOM_NAMES)
             ->with('participants')
             ->orderBy('room_type')
             ->get();
@@ -26,7 +29,13 @@ class RoomController extends Controller
 
     public function join(Request $request, Conversation $conversation)
     {
-        abort_unless($conversation->is_public && $conversation->room_type, 404, 'That room does not exist.');
+        abort_unless(
+            $conversation->is_public
+                && $conversation->room_type
+                && in_array($conversation->name, self::AVAILABLE_ROOM_NAMES, true),
+            404,
+            'That room does not exist.'
+        );
 
         $user = $request->user();
 

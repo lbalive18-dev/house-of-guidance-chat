@@ -14,11 +14,7 @@ export default function AuthLayout({
     <div className="geometric-motif flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-8 flex items-center justify-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-secondary">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-              <path d="M12 2L2 8l10 6 10-6-10-6zM2 16l10 6 10-6M2 12l10 6 10-6" />
-            </svg>
-          </span>
+          <img src="/hog-logo.png" alt="House of Guidance" className="h-12 w-12 rounded-full object-contain ring-1 ring-secondary/40" />
           <span className="text-lg font-bold text-primary dark:text-primary-200">
             House of Guidance
           </span>

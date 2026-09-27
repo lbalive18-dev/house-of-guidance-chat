@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/calls/ice-servers', [CallController::class, 'iceServers']);
+    Route::get('/calls/incoming', [CallController::class, 'incoming']);
     Route::post('/calls/start', [CallController::class, 'start']);
     Route::get('/calls/active/{conversation}', [CallController::class, 'active']);
 

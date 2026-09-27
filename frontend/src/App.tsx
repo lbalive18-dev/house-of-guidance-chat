@@ -1,17 +1,20 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RouterProvider } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import { toast, Toaster } from 'react-hot-toast';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { initNotifications } from '@/lib/nativeNotifications';
 import { useAuthStore } from '@/store/authStore';
 import { useIncomingCalls } from '@/hooks/useIncomingCalls';
 import { acceptCall, declineCall } from '@/lib/callApi';
 import IncomingCallDialog from '@/components/call/IncomingCallDialog';
+import { apiErrorMessage } from '@/lib/apiError';
+import { unlockCallAudio } from '@/hooks/useRingtone';
 import { router } from '@/router';
 
 export default function App() {
   const currentUserId = useAuthStore((s) => s.user?.id);
   const { ringing, dismissRinging } = useIncomingCalls(currentUserId);
+  const [acceptingCallId, setAcceptingCallId] = useState<number | null>(null);
 
   useEffect(() => {
     initNotifications().catch((error) => {
@@ -22,13 +25,17 @@ export default function App() {
   const handleAcceptRinging = useCallback(async () => {
     if (!ringing) return;
     const session = ringing;
-    dismissRinging();
+    unlockCallAudio();
+    setAcceptingCallId(session.id);
     try {
       await acceptCall(session.id);
-    } catch {
-      // Chat page will surface the failure and offer rejoin.
+      dismissRinging();
+      void router.navigate(`/chat/${session.conversation_id}`);
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Could not answer this call.'));
+    } finally {
+      setAcceptingCallId(null);
     }
-    void router.navigate(`/chat/${session.conversation_id}`);
   }, [ringing, dismissRinging]);
 
   const handleDeclineRinging = useCallback(async () => {
@@ -49,6 +56,7 @@ export default function App() {
       {ringing && (
         <IncomingCallDialog
           session={ringing}
+          isAccepting={acceptingCallId === ringing.id}
           onAccept={() => void handleAcceptRinging()}
           onDecline={() => void handleDeclineRinging()}
         />

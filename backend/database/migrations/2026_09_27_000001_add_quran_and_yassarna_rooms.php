@@ -1,18 +1,16 @@
 <?php
 
-namespace Database\Seeders;
-
 use App\Models\Conversation;
 use App\Models\User;
-use Illuminate\Database\Seeder;
+use Illuminate\Database\Migrations\Migration;
 
-class RoomSeeder extends Seeder
+return new class extends Migration
 {
-    public function run(): void
+    public function up(): void
     {
-        $owner = User::where('role', 'admin')->first();
+        $owner = User::query()->where('role', 'admin')->first();
 
-        $rooms = [
+        foreach ([
             [
                 'room_type' => 'discussion',
                 'name' => 'Quran Room',
@@ -23,19 +21,15 @@ class RoomSeeder extends Seeder
                 'name' => 'Yassarna Room',
                 'description' => 'Learn and practise Yassarna reading together.',
             ],
-        ];
-
-        foreach ($rooms as $room) {
-            if (Conversation::where('is_public', true)->where('name', $room['name'])->exists()) {
+        ] as $room) {
+            if (Conversation::query()->where('is_public', true)->where('name', $room['name'])->exists()) {
                 continue;
             }
 
-            $conversation = Conversation::create([
+            $conversation = Conversation::query()->create([
+                ...$room,
                 'type' => 'group',
-                'room_type' => $room['room_type'],
                 'is_public' => true,
-                'name' => $room['name'],
-                'description' => $room['description'],
                 'created_by' => $owner?->id,
             ]);
 
@@ -47,4 +41,9 @@ class RoomSeeder extends Seeder
             }
         }
     }
-}
+
+    public function down(): void
+    {
+        // Preserve community conversations and messages on rollback.
+    }
+};
