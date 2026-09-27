@@ -53,7 +53,7 @@ export default function ActiveCallView({ call, currentUserId, currentUserName, c
         <Avatar name={other?.user?.name ?? '…'} avatarUrl={other?.user?.avatar_url} size="xl" />
         <div>
           <p className="font-bold text-gray-900 dark:text-gray-50">Calling {other?.user?.name ?? '…'}</p>
-          <p className="text-sm text-gray-500">Ringing…</p>
+          <p className="text-sm text-gray-500">Waiting for an answer…</p>
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
