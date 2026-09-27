@@ -3,6 +3,7 @@
 namespace App\Filesystems;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use League\Flysystem\Config;
 use League\Flysystem\DirectoryAttributes;
 use League\Flysystem\FileAttributes;
@@ -270,16 +271,33 @@ class SupabaseStorageAdapter implements FilesystemAdapter
 
     private function upload(string $path, string $contents, string $mimeType): void
     {
+        if (trim($this->baseUrl) === '' || trim($this->serviceKey) === '' || trim($this->bucket) === '') {
+            Log::error('Supabase Storage upload is missing required configuration.', [
+                'has_url' => trim($this->baseUrl) !== '',
+                'has_service_key' => trim($this->serviceKey) !== '',
+                'has_bucket' => trim($this->bucket) !== '',
+            ]);
+
+            throw UnableToWriteFile::atLocation($path, 'Supabase Storage is not configured.');
+        }
+
         $response = Http::timeout(60)
             ->withHeaders($this->authHeaders() + [
                 'Content-Type' => $mimeType,
                 'x-upsert' => 'true',
             ])
             ->withBody($contents, $mimeType)
-            ->put($this->objectUrl($path));
+            ->post($this->objectUrl($path));
 
         if (! $response->successful()) {
-            throw UnableToWriteFile::atLocation($path, 'Supabase upload failed.');
+            Log::warning('Supabase Storage rejected an upload.', [
+                'http_status' => $response->status(),
+            ]);
+
+            throw UnableToWriteFile::atLocation(
+                $path,
+                'Supabase upload failed with HTTP '.$response->status().'.'
+            );
         }
     }
 

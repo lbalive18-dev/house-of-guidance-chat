@@ -27,11 +27,12 @@ export function useIncomingCalls(currentUserId: number | undefined) {
     };
 
     channel.listen('.call.initiated', onInitiated);
+    channel.listen('.call.accepted', clearIfMatches);
     channel.listen('.call.cancelled', clearIfMatches);
     channel.listen('.call.ended', clearIfMatches);
 
     return () => {
-      for (const event of ['.call.initiated', '.call.cancelled', '.call.ended'] as const) {
+      for (const event of ['.call.initiated', '.call.accepted', '.call.cancelled', '.call.ended'] as const) {
         try {
           channel.stopListening(event);
         } catch {

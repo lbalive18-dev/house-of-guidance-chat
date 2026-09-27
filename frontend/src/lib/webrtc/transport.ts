@@ -56,6 +56,7 @@ export function createPeerConnection(
  */
 export class MeshTransport implements CallTransport {
   private peers = new Map<number, RTCPeerConnection>();
+  private pendingIce = new Map<number, RTCIceCandidateInit[]>();
   private localStream: MediaStream | null = null;
 
   constructor(
@@ -106,6 +107,7 @@ export class MeshTransport implements CallTransport {
 
   async makeOffer(userId: number): Promise<void> {
     const pc = await this.ensurePeer(userId);
+    if (pc.signalingState !== 'stable') return;
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     this.events.onSignalSend(userId, 'offer', { sdp: offer.sdp, type: offer.type });
@@ -114,6 +116,7 @@ export class MeshTransport implements CallTransport {
   async handleOffer(userId: number, offer: RTCSessionDescriptionInit): Promise<void> {
     const pc = await this.ensurePeer(userId);
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    await this.flushPendingIce(userId, pc);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     this.events.onSignalSend(userId, 'answer', { sdp: answer.sdp, type: answer.type });
@@ -124,11 +127,18 @@ export class MeshTransport implements CallTransport {
     if (!pc) return;
     if (pc.signalingState !== 'have-local-offer') return;
     await pc.setRemoteDescription(new RTCSessionDescription(answer));
+    await this.flushPendingIce(userId, pc);
   }
 
   async handleIce(userId: number, candidate: RTCIceCandidateInit): Promise<void> {
-    const pc = this.peers.get(userId);
-    if (!pc || !pc.remoteDescription) return;
+    const pc = await this.ensurePeer(userId);
+    if (!pc.remoteDescription) {
+      const queued = this.pendingIce.get(userId) ?? [];
+      queued.push(candidate);
+      this.pendingIce.set(userId, queued);
+      return;
+    }
+
     try {
       await pc.addIceCandidate(new RTCIceCandidate(candidate));
     } catch {
@@ -137,6 +147,7 @@ export class MeshTransport implements CallTransport {
   }
 
   removePeer(userId: number): void {
+    this.pendingIce.delete(userId);
     const pc = this.peers.get(userId);
     if (pc) {
       try {
@@ -157,7 +168,21 @@ export class MeshTransport implements CallTransport {
 
   close(): void {
     for (const userId of this.peerIds()) this.removePeer(userId);
+    this.pendingIce.clear();
     this.localStream = null;
+  }
+
+  private async flushPendingIce(userId: number, pc: RTCPeerConnection): Promise<void> {
+    const candidates = this.pendingIce.get(userId) ?? [];
+    this.pendingIce.delete(userId);
+
+    for (const candidate of candidates) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch {
+        // A late or duplicate candidate should not abort negotiation.
+      }
+    }
   }
 }
 

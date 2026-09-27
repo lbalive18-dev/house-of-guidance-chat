@@ -1,5 +1,9 @@
 <?php
 
+$supabasePublicBase = env('SUPABASE_URL')
+    ? rtrim((string) env('SUPABASE_URL'), '/').'/storage/v1/object/public/'.env('SUPABASE_BUCKET', 'hog-uploads')
+    : null;
+
 return [
     'default' => env('FILESYSTEM_DISK', 'public'),
 
@@ -19,7 +23,9 @@ return [
         'public' => [
             'driver' => env('PUBLIC_DISK_DRIVER', 'local'),
             'root' => storage_path('app/public'),
-            'url' => env('PUBLIC_DISK_URL', env('APP_URL').'/storage'),
+            'url' => env('PUBLIC_DISK_URL', env('PUBLIC_DISK_DRIVER', 'local') === 'supabase' && $supabasePublicBase
+                ? $supabasePublicBase
+                : env('APP_URL').'/storage'),
             'visibility' => 'public',
             'throw' => false,
             'supabase_url' => env('SUPABASE_URL'),
@@ -31,7 +37,9 @@ return [
         'avatars' => [
             'driver' => env('AVATARS_DISK_DRIVER', 'local'),
             'root' => storage_path('app/public/avatars'),
-            'url' => env('AVATARS_DISK_URL', env('APP_URL').'/storage/avatars'),
+            'url' => env('AVATARS_DISK_URL', env('AVATARS_DISK_DRIVER', 'local') === 'supabase' && $supabasePublicBase
+                ? $supabasePublicBase.'/avatars'
+                : env('APP_URL').'/storage/avatars'),
             'visibility' => 'public',
             'throw' => false,
             'supabase_url' => env('SUPABASE_URL'),
@@ -43,7 +51,9 @@ return [
         'chat-attachments' => [
             'driver' => env('CHAT_ATTACHMENTS_DISK_DRIVER', 'local'),
             'root' => storage_path('app/public/chat-attachments'),
-            'url' => env('CHAT_ATTACHMENTS_DISK_URL', env('APP_URL').'/storage/chat-attachments'),
+            'url' => env('CHAT_ATTACHMENTS_DISK_URL', env('CHAT_ATTACHMENTS_DISK_DRIVER', 'local') === 'supabase' && $supabasePublicBase
+                ? $supabasePublicBase.'/chat-attachments'
+                : env('APP_URL').'/storage/chat-attachments'),
             'visibility' => 'public',
             'throw' => false,
             'supabase_url' => env('SUPABASE_URL'),
@@ -55,7 +65,9 @@ return [
         'voice-notes' => [
             'driver' => env('VOICE_NOTES_DISK_DRIVER', 'local'),
             'root' => storage_path('app/public/voice-notes'),
-            'url' => env('VOICE_NOTES_DISK_URL', env('APP_URL').'/storage/voice-notes'),
+            'url' => env('VOICE_NOTES_DISK_URL', env('VOICE_NOTES_DISK_DRIVER', 'local') === 'supabase' && $supabasePublicBase
+                ? $supabasePublicBase.'/voice-notes'
+                : env('APP_URL').'/storage/voice-notes'),
             'visibility' => 'public',
             'throw' => false,
             'supabase_url' => env('SUPABASE_URL'),

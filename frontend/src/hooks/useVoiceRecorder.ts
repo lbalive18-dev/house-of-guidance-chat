@@ -30,7 +30,15 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
     streamRef.current = stream;
     chunksRef.current = [];
 
-    const recorder = new MediaRecorder(stream);
+    const supportedMimeType = [
+      'audio/webm;codecs=opus',
+      'audio/mp4',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+    ].find((mimeType) => MediaRecorder.isTypeSupported(mimeType));
+    const recorder = supportedMimeType
+      ? new MediaRecorder(stream, { mimeType: supportedMimeType })
+      : new MediaRecorder(stream);
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
@@ -50,7 +58,9 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
 
     return new Promise((resolve) => {
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const blob = new Blob(chunksRef.current, {
+          type: recorder.mimeType || chunksRef.current[0]?.type || 'audio/webm',
+        });
         cleanup();
         resolve({ blob, seconds: finalSeconds });
       };

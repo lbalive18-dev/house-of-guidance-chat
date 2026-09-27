@@ -115,9 +115,14 @@ export default function MessageComposer({
 
     setSending(true);
     try {
+      const fileExtension = result.blob.type.includes('mp4')
+        ? 'm4a'
+        : result.blob.type.includes('ogg')
+          ? 'ogg'
+          : 'webm';
       const message = await sendAttachmentMessage(conversationId, {
         file: result.blob,
-        fileName: 'voice-note.webm',
+        fileName: `voice-note.${fileExtension}`,
         attachmentType: 'voice',
         durationSeconds: result.seconds,
         replyToId: replyingTo?.id,

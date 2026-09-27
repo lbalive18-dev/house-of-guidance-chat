@@ -33,7 +33,11 @@ class CallController extends Controller
      */
     public function iceServers(Request $request)
     {
-        $servers = [['urls' => explode(',', env('STUN_URLS', 'stun:stun.l.google.com:19302'))]];
+        $stunUrls = array_values(array_filter(array_map(
+            'trim',
+            explode(',', env('STUN_URLS', 'stun:stun.l.google.com:19302,stun:stun.cloudflare.com:3478'))
+        )));
+        $servers = $stunUrls !== [] ? [['urls' => $stunUrls]] : [];
 
         if (env('TURN_URLS') && env('TURN_USERNAME') && env('TURN_CREDENTIAL')) {
             $servers[] = [
@@ -79,17 +83,45 @@ class CallController extends Controller
 
         abort_unless($conversation->isMember($user), 403, 'Only conversation members can start calls.');
 
-        abort_if(
-            (bool) $conversation->activeCallSession(),
-            409,
-            'There is already a live call in this conversation.'
-        );
+        $otherParticipants = $conversation->activeParticipants()
+            ->where('users.id', '!=', $user->id);
+
+        if ($conversation->type === 'private') {
+            $callee = (clone $otherParticipants)->first();
+            abort_if(
+                ! $callee || ! $callee->is_online,
+                409,
+                'This person is offline right now. Send them a message instead.'
+            );
+        }
 
         $type = $conversation->isRoom()
             ? CallSession::TYPE_ROOM
             : ($conversation->type === 'private' ? CallSession::TYPE_PRIVATE : CallSession::TYPE_GROUP);
 
         $session = DB::transaction(function () use ($conversation, $user, $request, $type) {
+            $conversation = Conversation::query()
+                ->whereKey($conversation->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            abort_if(
+                (bool) $conversation->activeCallSession(),
+                409,
+                'There is already a live call in this conversation.'
+            );
+
+            $otherIds = $conversation->activeParticipants()
+                ->where('users.id', '!=', $user->id)
+                ->where('users.last_seen_at', '>=', now()->subMinutes(2))
+                ->pluck('users.id');
+
+            abort_if(
+                $type !== CallSession::TYPE_ROOM && $otherIds->isEmpty(),
+                409,
+                'No other members are online right now.'
+            );
+
             $session = CallSession::create([
                 'type' => $type,
                 'media' => $request->validated('media'),
@@ -106,10 +138,6 @@ class CallController extends Controller
                 'last_heartbeat_at' => now(),
             ]);
 
-            $otherIds = $conversation->activeParticipants()
-                ->where('users.id', '!=', $user->id)
-                ->pluck('users.id');
-
             foreach ($otherIds as $inviteeId) {
                 $session->participants()->create([
                     'user_id' => $inviteeId,
@@ -121,13 +149,7 @@ class CallController extends Controller
         });
 
         $session->load(['initiator', 'participants.user']);
-        try {
-            broadcast(new CallInitiated($session))->toOthers();
-        } catch (\Throwable $exception) {
-            // Starting the call is committed already. Reverb outages should
-            // not make the caller retry and receive a misleading 409.
-            report($exception);
-        }
+        $this->broadcastSafely(new CallInitiated($session));
 
         return new CallSessionResource($session);
     }
@@ -146,12 +168,12 @@ class CallController extends Controller
             $session->update(['status' => CallSession::STATUS_ACTIVE, 'started_at' => now()]);
         }
 
-        broadcast(new CallAccepted($session->id, $session->conversation_id, $participant))->toOthers();
-        broadcast(new CallParticipantJoined(
+        $this->broadcastSafely(new CallAccepted($session->id, $session->conversation_id, $participant));
+        $this->broadcastSafely(new CallParticipantJoined(
             $session->id,
             $session->conversation_id,
             $request->user()
-        ))->toOthers();
+        ));
 
         $session->load(['initiator', 'participants.user']);
 
@@ -164,7 +186,7 @@ class CallController extends Controller
 
         $participant->update(['status' => CallParticipant::STATUS_DECLINED]);
 
-        broadcast(new CallDeclined($session->id, $session->conversation_id, $request->user()->id))->toOthers();
+        $this->broadcastSafely(new CallDeclined($session->id, $session->conversation_id, $request->user()->id));
 
         $this->maybeAutoEnd($session);
 
@@ -179,7 +201,10 @@ class CallController extends Controller
     {
         $user = $request->user();
         abort_unless($session->initiator_id === $user->id, 403, 'Only the caller can cancel.');
-        abort_if(! $session->isLive(), 410, 'This call has already ended.');
+
+        if (! $session->isLive()) {
+            return response()->json(['message' => 'This call has already ended.']);
+        }
 
         $othersJoined = $session->participants()
             ->where('status', CallParticipant::STATUS_JOINED)
@@ -190,8 +215,8 @@ class CallController extends Controller
             return $this->leave($request, $session);
         }
 
-        $this->finishSession($session, 'cancelled');
-        broadcast(new CallCancelled($session->id, $session->conversation_id))->toOthers();
+        $missed = $this->finishSession($session, 'cancelled');
+        $this->broadcastSafely(new CallCancelled($session->id, $session->conversation_id, $missed));
 
         return response()->json(['message' => 'Call cancelled.']);
     }
@@ -229,13 +254,13 @@ class CallController extends Controller
             $session->update(['status' => CallSession::STATUS_ACTIVE, 'started_at' => now()]);
         }
 
-        broadcast(new CallParticipantJoined(
+        $this->broadcastSafely(new CallParticipantJoined(
             $session->id,
             $session->conversation_id,
             $user,
             (bool) $participant->is_muted,
             (bool) $participant->is_camera_off
-        ))->toOthers();
+        ));
 
         $session->load(['initiator', 'participants.user']);
 
@@ -252,7 +277,7 @@ class CallController extends Controller
         $participant->update(['status' => CallParticipant::STATUS_LEFT, 'left_at' => now()]);
         $this->releaseSeat($session->conversation_id, $user->id);
 
-        broadcast(new CallParticipantLeft($session->id, $session->conversation_id, $user->id, 'left'))->toOthers();
+        $this->broadcastSafely(new CallParticipantLeft($session->id, $session->conversation_id, $user->id, 'left'));
 
         $this->maybeAutoEnd($session, 'ended');
 
@@ -288,7 +313,7 @@ class CallController extends Controller
         }
 
         $missed = $this->finishSession($session, 'ended');
-        broadcast(new CallEnded($session->id, $session->conversation_id, 'ended', $missed))->toOthers();
+        $this->broadcastSafely(new CallEnded($session->id, $session->conversation_id, 'ended', $missed));
 
         return response()->json(['message' => 'Call ended.', 'missed_user_ids' => $missed]);
     }
@@ -317,13 +342,13 @@ class CallController extends Controller
 
         $participant->update($validated);
 
-        broadcast(new CallParticipantJoined(
+        $this->broadcastSafely(new CallParticipantJoined(
             $session->id,
             $session->conversation_id,
             $request->user(),
             (bool) $participant->fresh()->is_muted,
             (bool) $participant->fresh()->is_camera_off
-        ))->toOthers();
+        ));
 
         return response()->noContent();
     }
@@ -355,14 +380,14 @@ class CallController extends Controller
             abort_unless($recipientJoined, 422, 'The recipient is not in this call.');
         }
 
-        broadcast(new CallSignal(
+        $this->broadcastSafely(new CallSignal(
             $session->id,
             $session->conversation_id,
             $user->id,
             $validated['to_user_id'] ?? null,
             $validated['signal_type'],
             $validated['payload']
-        ))->toOthers();
+        ));
 
         return response()->noContent();
     }
@@ -387,7 +412,7 @@ class CallController extends Controller
         $participant->update(['status' => CallParticipant::STATUS_REMOVED, 'left_at' => now()]);
         $this->releaseSeat($session->conversation_id, $user->id);
 
-        broadcast(new CallParticipantLeft($session->id, $session->conversation_id, $user->id, 'removed'))->toOthers();
+        $this->broadcastSafely(new CallParticipantLeft($session->id, $session->conversation_id, $user->id, 'removed'));
 
         $this->maybeAutoEnd($session, 'ended');
 
@@ -439,7 +464,7 @@ class CallController extends Controller
 
         if (! $anyJoined) {
             $missed = $this->finishSession($session, $reason);
-            broadcast(new CallEnded($session->id, $session->conversation_id, $reason, $missed))->toOthers();
+            $this->broadcastSafely(new CallEnded($session->id, $session->conversation_id, $reason, $missed));
         }
     }
 
@@ -448,38 +473,66 @@ class CallController extends Controller
      */
     protected function finishSession(CallSession $session, string $reason): array
     {
-        return DB::transaction(function () use ($session, $reason) {
-            $session->update(['status' => CallSession::STATUS_ENDED, 'ended_at' => now()]);
+        $result = DB::transaction(function () use ($session) {
+            $lockedSession = CallSession::query()
+                ->whereKey($session->id)
+                ->lockForUpdate()
+                ->first();
 
-            $missed = $session->participants()
+            if (! $lockedSession || ! $lockedSession->isLive()) {
+                return ['finished' => false, 'missed' => []];
+            }
+
+            $lockedSession->update([
+                'status' => CallSession::STATUS_ENDED,
+                'ended_at' => now(),
+            ]);
+
+            $missed = $lockedSession->participants()
                 ->where('status', CallParticipant::STATUS_INVITED)
                 ->pluck('user_id')
                 ->all();
 
             if ($missed !== []) {
-                $session->participants()->whereIn('user_id', $missed)
+                $lockedSession->participants()->whereIn('user_id', $missed)
                     ->update(['status' => CallParticipant::STATUS_MISSED]);
             }
 
-            RoomSeat::where('conversation_id', $session->conversation_id)->delete();
+            RoomSeat::where('conversation_id', $lockedSession->conversation_id)->delete();
 
-            $session->loadMissing('initiator');
+            return ['finished' => true, 'missed' => $missed];
+        });
 
-            foreach ($missed as $userId) {
+        if (! $result['finished']) {
+            return [];
+        }
+
+        $missed = $result['missed'];
+        $session->refresh()->loadMissing(['initiator', 'conversation']);
+
+        foreach ($missed as $userId) {
+            try {
                 User::find($userId)?->notify(new MissedCallNotification($session));
+            } catch (\Throwable $exception) {
+                report($exception);
             }
+        }
 
-            $conversation = $session->conversation;
+        $conversation = $session->conversation;
+        try {
             $conversation->logSystemMessage(
                 $session->initiator,
                 $reason === 'cancelled'
                     ? "{$session->initiator->name} cancelled the {$session->media} call."
                     : "{$session->initiator->name} ended the {$session->media} call."
             );
-            broadcast(new ConversationUpdated($conversation))->toOthers();
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
 
-            return $missed;
-        });
+        $this->broadcastSafely(new ConversationUpdated($conversation));
+
+        return $missed;
     }
 
     protected function releaseSeat(int $conversationId, int $userId): void
@@ -491,7 +544,18 @@ class CallController extends Controller
         if ($seat) {
             $number = $seat->seat_number;
             $seat->delete();
-            broadcast(new SeatReleased($conversationId, $number, $userId))->toOthers();
+            $this->broadcastSafely(new SeatReleased($conversationId, $number, $userId));
+        }
+    }
+
+    protected function broadcastSafely(object $event): void
+    {
+        try {
+            broadcast($event)->toOthers();
+        } catch (\Throwable $exception) {
+            // A realtime outage must not roll back or misreport committed
+            // call/session changes to the caller.
+            report($exception);
         }
     }
 }

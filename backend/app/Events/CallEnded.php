@@ -25,7 +25,13 @@ class CallEnded implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel('conversation.'.$this->conversationId)];
+        $channels = [new PrivateChannel('conversation.'.$this->conversationId)];
+
+        foreach ($this->missedUserIds as $userId) {
+            $channels[] = new PrivateChannel('App.Models.User.'.$userId);
+        }
+
+        return $channels;
     }
 
     public function broadcastAs(): string

@@ -126,18 +126,28 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
       const config = await fetchIceServers();
       const transport = new MeshTransport(currentUserId ?? 0, config, {
         onRemoteStream: (userId, stream) => {
+          const connectionState = transportRef.current?.connectionState(userId) ?? 'new';
           setRemotePeers((current) => {
             const existing = current.find((p) => p.userId === userId);
             if (existing) {
-              return current.map((p) => (p.userId === userId ? { ...p, stream } : p));
+              return current.map((p) => (p.userId === userId ? { ...p, stream, connectionState } : p));
             }
-            return [...current, { userId, stream, connectionState: 'new', isMuted: false, isCameraOff: false }];
+            return [...current, { userId, stream, connectionState, isMuted: false, isCameraOff: false }];
           });
         },
         onConnectionState: (userId, state) => {
-          setRemotePeers((current) =>
-            current.map((p) => (p.userId === userId ? { ...p, connectionState: state } : p)),
-          );
+          setRemotePeers((current) => {
+            const existing = current.find((peer) => peer.userId === userId);
+            if (existing) {
+              return current.map((peer) => (peer.userId === userId ? { ...peer, connectionState: state } : peer));
+            }
+            return [...current, { userId, stream: null, connectionState: state, isMuted: false, isCameraOff: false }];
+          });
+          if (state === 'failed') {
+            setError('The media connection failed. This network may need a TURN relay to reach the other device.');
+          } else if (state === 'connected') {
+            setError('');
+          }
         },
         onSignalSend: (toUserId, signalType, payload) => {
           sendSignal(sessionId, { to_user_id: toUserId, signal_type: signalType, payload }).catch(() => {
@@ -190,8 +200,9 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
     async (media: CallMedia) => {
       if (!conversationId) return;
       setError('');
+      let created: CallSession | null = null;
       try {
-        const created = await startCall(conversationId, media);
+        created = await startCall(conversationId, media);
         setSession(created);
         setParticipants(created.participants ?? []);
         setIsCameraOff(media === 'audio');
@@ -205,11 +216,24 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
         }
         setLocalStream(stream);
       } catch (err) {
+        if (created) {
+          try {
+            await endCall(created.id);
+          } catch {
+            // The server's stale-call cleanup is the backstop if the network
+            // also prevents cleanup after local media setup fails.
+          }
+        }
+        teardownMedia();
+        if (mountedRef.current) {
+          setSession(null);
+          setParticipants([]);
+        }
         setError(apiErrorMessage(err, 'Could not start the call.'));
         setViewState('failed');
       }
     },
-    [conversationId, acquireMedia, ensureTransport],
+    [conversationId, acquireMedia, ensureTransport, teardownMedia],
   );
 
   const accept = useCallback(async () => {
@@ -233,7 +257,6 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
       const fresh = await refreshSession(updated.id);
       if (fresh) {
         await offerToJoinedPeers(fresh);
-        if (mountedRef.current) setViewState('connected');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not join the call.');
@@ -262,7 +285,6 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
       const fresh = await refreshSession(updated.id);
       if (fresh) {
         await offerToJoinedPeers(fresh);
-        if (mountedRef.current) setViewState('connected');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not join the call.');
@@ -289,15 +311,19 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
     if (!current) return;
     try {
       await cancelCall(current.id);
-    } finally {
-      teardownMedia();
-      if (mountedRef.current) {
-        setViewState('idle');
-        setSession(null);
-        setParticipants([]);
-      }
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Could not cancel the call. Please try again.'));
+      await refreshSession(current.id);
+      return;
     }
-  }, [teardownMedia]);
+
+    teardownMedia();
+    if (mountedRef.current) {
+      setViewState('idle');
+      setSession(null);
+      setParticipants([]);
+    }
+  }, [refreshSession, teardownMedia]);
 
   const end = useCallback(async () => {
     const current = sessionRef.current;
@@ -431,7 +457,6 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
               const fresh = await refreshSession(active.id);
               if (fresh) {
                 await offerToJoinedPeers(fresh);
-                if (mountedRef.current) setViewState('connected');
               }
             } catch (err) {
               if (mountedRef.current) {
@@ -474,7 +499,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
         if (fresh && mountedRef.current) void offerToJoinedPeers(fresh);
       });
       if (mountedRef.current && sessionRef.current?.initiator_id === currentUserId) {
-        setViewState('connected');
+        setViewState('connecting');
       }
     };
 
@@ -567,13 +592,11 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
               sdp: payload.payload.sdp as string,
               type: 'offer',
             });
-            if (mountedRef.current) setViewState('connected');
           } else if (payload.signal_type === 'answer') {
             await transport.handleAnswer(payload.from_user_id, {
               sdp: payload.payload.sdp as string,
               type: 'answer',
             });
-            if (mountedRef.current) setViewState('connected');
           } else {
             await transport.handleIce(payload.from_user_id, {
               candidate: payload.payload.candidate as string,
@@ -606,6 +629,16 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
       }
     };
   }, [conversationId, currentUserId, offerToJoinedPeers, refreshSession, teardownMedia]);
+
+  // Signaling and API acceptance only mean the peers exchanged setup data.
+  // Mark a call live only after an actual peer connection is established.
+  useEffect(() => {
+    if (remotePeers.some((peer) => peer.connectionState === 'connected')) {
+      if (viewState !== 'connected') setViewState('connected');
+    } else if (viewState === 'connected' && remotePeers.length > 0) {
+      setViewState('connecting');
+    }
+  }, [remotePeers, viewState]);
 
   // ---- heartbeat -------------------------------------------------------------
 

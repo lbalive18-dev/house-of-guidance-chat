@@ -14,13 +14,20 @@ class CallCancelled implements ShouldBroadcastNow
 
     public function __construct(
         public int $sessionId,
-        public int $conversationId
+        public int $conversationId,
+        public array $recipientUserIds = []
     ) {
     }
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel('conversation.'.$this->conversationId)];
+        $channels = [new PrivateChannel('conversation.'.$this->conversationId)];
+
+        foreach ($this->recipientUserIds as $userId) {
+            $channels[] = new PrivateChannel('App.Models.User.'.$userId);
+        }
+
+        return $channels;
     }
 
     public function broadcastAs(): string

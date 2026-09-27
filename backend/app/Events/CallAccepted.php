@@ -23,7 +23,10 @@ class CallAccepted implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel('conversation.'.$this->conversationId)];
+        return [
+            new PrivateChannel('conversation.'.$this->conversationId),
+            new PrivateChannel('App.Models.User.'.$this->participant->user_id),
+        ];
     }
 
     public function broadcastAs(): string
