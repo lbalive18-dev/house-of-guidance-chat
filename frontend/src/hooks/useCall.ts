@@ -31,6 +31,8 @@ import type {
 } from '@/types/call';
 
 const HEARTBEAT_MS = 30000;
+const PRIVATE_CALL_RING_TIMEOUT_MS = 45000;
+const PRIVATE_CALL_STATUS_POLL_MS = 5000;
 
 interface UseCallOptions {
   conversationId: number | undefined;
@@ -473,6 +475,87 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
         // no live call — idle
       });
   }, [conversationId, currentUserId, acquireMedia, ensureTransport, offerToJoinedPeers, refreshSession]);
+
+  // Last-seen is necessarily approximate, so a caller can briefly reach a
+  // user who has just closed the app. Poll acceptance and end unanswered
+  // one-to-one calls promptly so they cannot strand a live session.
+  const outgoingSessionId = session?.id;
+  const outgoingSessionStatus = session?.status;
+  const outgoingSessionType = session?.type;
+  const outgoingInitiatorId = session?.initiator_id;
+
+  useEffect(() => {
+    if (
+      viewState !== 'outgoing' ||
+      outgoingSessionStatus !== 'ringing' ||
+      outgoingSessionType !== 'private' ||
+      outgoingInitiatorId !== currentUserId ||
+      outgoingSessionId === undefined
+    ) {
+      return;
+    }
+
+    let stopped = false;
+    const sessionId = outgoingSessionId;
+
+    const checkRecipient = async () => {
+      const fresh = await refreshSession(sessionId);
+      if (stopped || !fresh) return false;
+
+      const recipientJoined = fresh.participants?.some(
+        (participant) => participant.user_id !== currentUserId && participant.status === 'joined',
+      );
+
+      if (fresh.status === 'active' || recipientJoined) {
+        setViewState('connecting');
+        await offerToJoinedPeers(fresh);
+        return true;
+      }
+
+      return false;
+    };
+
+    const poll = window.setInterval(() => {
+      void checkRecipient();
+    }, PRIVATE_CALL_STATUS_POLL_MS);
+
+    const timeout = window.setTimeout(() => {
+      void (async () => {
+        if (await checkRecipient() || stopped) return;
+
+        try {
+          await cancelCall(sessionId);
+        } catch {
+          const fresh = await refreshSession(sessionId);
+          if (fresh?.status === 'ringing' && mountedRef.current) {
+            setError('No answer yet. Please cancel the call before trying again.');
+            return;
+          }
+        }
+
+        if (stopped || !mountedRef.current || sessionRef.current?.id !== sessionId) return;
+        teardownMedia();
+        setEndReason('missed');
+        setViewState('ended');
+      })();
+    }, PRIVATE_CALL_RING_TIMEOUT_MS);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(poll);
+      window.clearTimeout(timeout);
+    };
+  }, [
+    currentUserId,
+    offerToJoinedPeers,
+    outgoingInitiatorId,
+    outgoingSessionId,
+    outgoingSessionStatus,
+    outgoingSessionType,
+    refreshSession,
+    teardownMedia,
+    viewState,
+  ]);
 
   // ---- realtime signaling --------------------------------------------------
 

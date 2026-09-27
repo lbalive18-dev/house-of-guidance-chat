@@ -87,7 +87,13 @@ export default function ActiveCallView({ call, currentUserId, currentUserName, c
     return (
       <div className="flex flex-col items-center gap-3 py-10 text-center">
         <p className="font-bold text-gray-900 dark:text-gray-50">
-          {endReason === 'cancelled' ? 'Call cancelled' : endReason === 'declined' ? 'Call declined' : 'Call ended'}
+          {endReason === 'cancelled'
+            ? 'Call cancelled'
+            : endReason === 'declined'
+              ? 'Call declined'
+              : endReason === 'missed'
+                ? 'No answer'
+                : 'Call ended'}
         </p>
         <button
           type="button"
