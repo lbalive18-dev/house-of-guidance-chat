@@ -70,6 +70,8 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
   const pendingOffers = useRef(new Map<number, RTCSessionDescriptionInit>());
   const offerRetryTimers = useRef(new Map<number, number>());
   const mountedRef = useRef(true);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const adoptingSelfRef = useRef(new Set<number>());
 
   sessionRef.current = session;
 
@@ -96,6 +98,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
   const teardownMedia = useCallback(() => {
     transportRef.current?.close();
     transportRef.current = null;
+    localStreamRef.current = null;
     setLocalStream((current) => {
       stopMediaStream(current);
       return null;
@@ -233,6 +236,54 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
     },
     [currentUserId],
   );
+
+  /**
+   * Bring up local media after the current user joined elsewhere (e.g. the
+   * global incoming dialog). Skips the accept API — membership is already
+   * joined — so an already-open chat window can recover without a refresh.
+   */
+  const adoptSelfJoined = useCallback(
+    async (fresh: CallSession) => {
+      if (currentUserId === undefined) return;
+      if (adoptingSelfRef.current.has(fresh.id)) return;
+      const me = fresh.participants?.find((p) => p.user_id === currentUserId);
+      if (!me || me.status !== 'joined') return;
+      if (localStreamRef.current && transportRef.current) {
+        await offerToJoinedPeers(fresh);
+        return;
+      }
+      adoptingSelfRef.current.add(fresh.id);
+      try {
+        setViewState((prev) => (prev === 'connected' ? prev : 'connecting'));
+        await ensureTransport(fresh.id);
+        if (!localStreamRef.current) {
+          const stream = await acquireMedia(fresh.media);
+          if (!mountedRef.current) {
+            stopMediaStream(stream);
+            return;
+          }
+          localStreamRef.current = stream;
+          setLocalStream(stream);
+          setIsCameraOff(fresh.media === 'audio');
+        }
+        await processPendingOffers();
+        const latest = await refreshSession(fresh.id);
+        if (latest && mountedRef.current) await offerToJoinedPeers(latest);
+      } catch (err) {
+        if (mountedRef.current) {
+          setError(err instanceof Error ? err.message : 'Could not join the call.');
+          setViewState('failed');
+        }
+      } finally {
+        adoptingSelfRef.current.delete(fresh.id);
+      }
+    },
+    [acquireMedia, currentUserId, ensureTransport, offerToJoinedPeers, processPendingOffers, refreshSession],
+  );
+
+  useEffect(() => {
+    localStreamRef.current = localStream;
+  }, [localStream]);
 
   // ---- actions ----------------------------------------------------------
 
@@ -476,39 +527,80 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
     mountedRef.current = true;
     if (!conversationId || currentUserId === undefined) return;
 
+    // If the global incoming dialog just accepted this conversation, adopt
+    // that session directly — the active-call index can lag the commit.
+    let pendingSessionId: number | null = null;
+    try {
+      const raw = sessionStorage.getItem('hog-accepted-call');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { sessionId: number; conversationId: number; at: number };
+        if (
+          parsed.conversationId === conversationId &&
+          typeof parsed.sessionId === 'number' &&
+          Date.now() - parsed.at < 60000
+        ) {
+          pendingSessionId = parsed.sessionId;
+        }
+      }
+    } catch {
+      pendingSessionId = null;
+    }
+
+    const adopt = (active: CallSession) => {
+      if (!mountedRef.current) return;
+      setSession(active);
+      setParticipants(active.participants ?? []);
+      const me = active.participants?.find((p) => p.user_id === currentUserId);
+      if (active.initiator_id === currentUserId && active.status === 'ringing') {
+        setViewState('outgoing');
+      } else if (me?.status === 'joined') {
+        setViewState('connecting');
+        void (async () => {
+          try {
+            await ensureTransport(active.id);
+            const stream = await acquireMedia(active.media);
+            if (!mountedRef.current) {
+              stopMediaStream(stream);
+              return;
+            }
+            setLocalStream(stream);
+            const fresh = await refreshSession(active.id);
+            if (fresh) {
+              await offerToJoinedPeers(fresh);
+            }
+          } catch (err) {
+            if (mountedRef.current) {
+              setError(err instanceof Error ? err.message : 'Could not join the call.');
+              setViewState('failed');
+            }
+          }
+        })();
+      } else if (me?.status === 'invited' && active.status === 'ringing') {
+        setViewState('incoming');
+      }
+    };
+
+    if (pendingSessionId !== null) {
+      const id = pendingSessionId;
+      try {
+        sessionStorage.removeItem('hog-accepted-call');
+      } catch {
+        // ignore
+      }
+      fetchCall(id)
+        .then(adopt)
+        .catch(() => {
+          fetchActiveCall(conversationId).then((active) => {
+            if (active) adopt(active);
+          }).catch(() => undefined);
+        });
+      return;
+    }
+
     fetchActiveCall(conversationId)
       .then((active) => {
         if (!mountedRef.current || !active) return;
-        setSession(active);
-        setParticipants(active.participants ?? []);
-        const me = active.participants?.find((p) => p.user_id === currentUserId);
-        if (active.initiator_id === currentUserId && active.status === 'ringing') {
-          setViewState('outgoing');
-        } else if (me?.status === 'joined') {
-          setViewState('connecting');
-          void (async () => {
-            try {
-              await ensureTransport(active.id);
-              const stream = await acquireMedia(active.media);
-              if (!mountedRef.current) {
-                stopMediaStream(stream);
-                return;
-              }
-              setLocalStream(stream);
-              const fresh = await refreshSession(active.id);
-              if (fresh) {
-                await offerToJoinedPeers(fresh);
-              }
-            } catch (err) {
-              if (mountedRef.current) {
-                setError(err instanceof Error ? err.message : 'Could not join the call.');
-                setViewState('failed');
-              }
-            }
-          })();
-        } else if (me?.status === 'invited' && active.status === 'ringing') {
-          setViewState('incoming');
-        }
+        adopt(active);
       })
       .catch(() => {
         // no live call — idle
@@ -710,7 +802,11 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
     const onAccepted = (payload: { session_id: number; user_id: number }) => {
       if (sessionRef.current?.id !== payload.session_id) return;
       void refreshSession(payload.session_id).then((fresh) => {
-        if (fresh && mountedRef.current) void offerToJoinedPeers(fresh);
+        if (!fresh || !mountedRef.current) return;
+        void offerToJoinedPeers(fresh);
+        // I accepted from the global dialog while this chat window was
+        // already open — bring up media here instead of going stale.
+        if (payload.user_id === currentUserId) void adoptSelfJoined(fresh);
       });
       if (mountedRef.current && sessionRef.current?.initiator_id === currentUserId) {
         setViewState('connecting');
@@ -725,7 +821,9 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
     }) => {
       if (sessionRef.current?.id !== payload.session_id) return;
       void refreshSession(payload.session_id).then((fresh) => {
-        if (fresh && mountedRef.current) void offerToJoinedPeers(fresh);
+        if (!fresh || !mountedRef.current) return;
+        void offerToJoinedPeers(fresh);
+        if (payload.user_id === currentUserId) void adoptSelfJoined(fresh);
       });
       setRemotePeers((current) => {
         if (current.some((p) => p.userId === payload.user_id)) return current;
@@ -845,7 +943,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
         }
       }
     };
-  }, [clearOfferRetry, conversationId, currentUserId, offerToJoinedPeers, refreshSession, teardownMedia]);
+  }, [adoptSelfJoined, clearOfferRetry, conversationId, currentUserId, offerToJoinedPeers, refreshSession, teardownMedia]);
 
   // Signaling and API acceptance only mean the peers exchanged setup data.
   // Mark a call live only after an actual peer connection is established.

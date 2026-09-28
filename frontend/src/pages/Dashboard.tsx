@@ -4,7 +4,6 @@ import { useLocation } from 'react-router-dom';
 import {
   ArrowRight,
   BookOpen,
-  MailWarning,
   PlayCircle,
   Sparkles,
   Users,
@@ -36,22 +35,6 @@ export default function Dashboard() {
       {/* Welcome Header */}
       <section className="geometric-motif border-b border-gray-100 dark:border-gray-800">
         <div className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-10">
-          {!user.email_verified_at && (
-            <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-secondary-200 bg-secondary-50 px-4 py-3 text-sm text-secondary-800 dark:border-secondary-800 dark:bg-secondary-900/20 dark:text-secondary-200">
-              <span className="flex items-center gap-2">
-                <MailWarning className="h-4 w-4 shrink-0" />
-                Please verify your email address to unlock all features.
-              </span>
-
-              <Link
-                to="/verify-email"
-                className="whitespace-nowrap font-semibold hover:underline"
-              >
-                Verify now
-              </Link>
-            </div>
-          )}
-
           <div className="flex items-center gap-4">
             <Avatar
               name={user.name}
@@ -91,6 +74,42 @@ export default function Dashboard() {
       </section>
 
       <main className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
+        {/* Celestial accent — decorative only, never blocks controls */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none relative mb-6 flex h-20 items-center overflow-hidden rounded-[1.75rem] border border-emerald-900/10 bg-gradient-to-r from-[#041b15] via-[#07382d] to-[#0a4a38] px-5 md:h-24"
+        >
+          <div className="hog-moon relative h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-[#f3d877] to-[#d4af37] shadow-[0_0_24px_rgba(212,175,55,.45)]">
+            <div className="absolute inset-y-1 left-1.5 w-7 rounded-full bg-[#07382d]/90" />
+          </div>
+          <div className="hog-stars absolute inset-0">
+            {[
+              { left: '18%', top: '22%', delay: '0s', size: 3 },
+              { left: '30%', top: '62%', delay: '0.8s', size: 2 },
+              { left: '44%', top: '28%', delay: '1.6s', size: 3 },
+              { left: '58%', top: '58%', delay: '0.4s', size: 2 },
+              { left: '70%', top: '26%', delay: '2.1s', size: 3 },
+              { left: '82%', top: '60%', delay: '1.1s', size: 2 },
+              { left: '92%', top: '30%', delay: '2.6s', size: 3 },
+            ].map((star, i) => (
+              <span
+                key={i}
+                style={{
+                  left: star.left,
+                  top: star.top,
+                  width: star.size,
+                  height: star.size,
+                  animationDelay: star.delay,
+                }}
+                className="absolute rounded-full bg-[#e6ca74]"
+              />
+            ))}
+          </div>
+          <p className="relative ml-4 text-xs font-medium tracking-wide text-emerald-50/70 md:text-sm">
+            Under His light we learn, together.
+          </p>
+        </div>
+
         {/* Featured Quran */}
         <section className="relative mb-8 overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#07382d] via-[#0b5a45] to-[#063127] text-white shadow-[0_24px_60px_rgba(7,56,45,0.2)] ring-1 ring-emerald-950/10">
           {/* Decorative shapes */}

@@ -73,3 +73,7 @@ services:
         sync: false
       - key: SUPABASE_BUCKET
         value: hog-uploads
+      # First admin claim via the web app (no Shell on the free plan).
+      # Set to your own registered email in the Render dashboard.
+      - key: FIRST_ADMIN_EMAIL
+        sync: false

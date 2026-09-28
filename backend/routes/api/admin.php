@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AnalyticsController;
 use App\Http\Controllers\Api\Admin\BroadcastController;
+use App\Http\Controllers\Api\Admin\FirstAdminController;
 use App\Http\Controllers\Api\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Api\ReportController;
 use Illuminate\Support\Facades\Route;
@@ -14,11 +15,16 @@ use Illuminate\Support\Facades\Route;
 |
 | /reports (filing a report) is open to any authenticated user. Everything
 | under /admin requires the "admin" role (see the `admin` middleware alias
-| registered in bootstrap/app.php).
+| registered in bootstrap/app.php) — except the one-time first-admin claim
+| below, which is how hosts without server shell access create the first
+| admin from the web app. It disables itself once any admin exists.
 |
 */
 
 Route::middleware('auth:sanctum')->post('/reports', [ReportController::class, 'store']);
+
+// One-time first-admin claim (verified email + env-guarded, no shell needed).
+Route::middleware(['auth:sanctum', 'throttle:10,1'])->post('/admin/claim', FirstAdminController::class);
 
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     Route::get('/users', [AdminUserController::class, 'index']);

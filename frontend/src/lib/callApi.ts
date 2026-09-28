@@ -20,10 +20,14 @@ export async function startCall(conversationId: number, media: CallMedia): Promi
 }
 
 export async function fetchActiveCall(conversationId: number): Promise<CallSession | null> {
-  const { data } = await api.get<{ session: CallSession | null }>(
+  const { data } = await api.get<{ session?: CallSession | null } & Partial<CallSession>>(
     `/api/calls/active/${conversationId}`,
   );
-  return data.session;
+  // Backend now wraps as {session: ...}; older deployments returned the
+  // resource directly. Accept both so calls recover across the rollout.
+  if (data && typeof data === 'object' && 'session' in data) return data.session ?? null;
+  if (data && typeof data === 'object' && 'id' in data) return data as unknown as CallSession;
+  return null;
 }
 
 export async function fetchCall(sessionId: number): Promise<CallSession> {

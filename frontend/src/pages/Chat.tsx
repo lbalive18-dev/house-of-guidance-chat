@@ -172,6 +172,49 @@ export default function Chat() {
     requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }));
   };
 
+  // Light recovery poll: if a Reverb message event is missed while the
+  // socket reconnects, pick up the latest page without duplicating or
+  // yanking scroll. Runs only while the tab is visible.
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      fetchMessages(id, 1)
+        .then((res) => {
+          if (!active) return;
+          const latest = [...res.data].reverse();
+          if (latest.length === 0) return;
+          const container = scrollRef.current;
+          const nearBottom = container
+            ? container.scrollHeight - container.scrollTop - container.clientHeight < 160
+            : true;
+          let hasNew = false;
+          setMessages((prev) => {
+            const byId = new Map(prev.map((m) => [m.id, m]));
+            for (const msg of latest) {
+              if (!byId.has(msg.id)) {
+                hasNew = true;
+                byId.set(msg.id, msg);
+              }
+            }
+            if (!hasNew) return prev;
+            return [...byId.values()].sort(
+              (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+            );
+          });
+          if (hasNew && nearBottom) {
+            requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }));
+          }
+        })
+        .catch(() => undefined);
+    }, 15000);
+    return () => {
+      active = false;
+      window.clearInterval(poll);
+    };
+  }, [id]);
+
   const handleReact = async (message: ChatMessage, emoji: string) => {
     try {
       const { data } = await api.post(`/api/conversations/${id}/messages/${message.id}/react`, { emoji });
@@ -220,6 +263,14 @@ export default function Chat() {
               {conversation.type === 'private' ? (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {typingUser ? 'typing…' : conversation.is_online ? 'Online' : 'Offline'}
+                </p>
+              ) : conversation.room_type ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {typingUser
+                    ? 'typing…'
+                    : currentUser?.role === 'admin' || conversation.my_role === 'admin'
+                      ? `${conversation.participant_count} members`
+                      : 'Learning room'}
                 </p>
               ) : (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -281,7 +332,7 @@ export default function Chat() {
         </div>
       )}
 
-      <div ref={scrollRef} onScroll={handleScroll} className="geometric-motif flex-1 overflow-y-auto py-4 md:py-6">
+      <div ref={scrollRef} onScroll={handleScroll} className="chat-pattern flex-1 overflow-y-auto py-4 md:py-6">
         {loading && (
           <div className="flex h-full items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />

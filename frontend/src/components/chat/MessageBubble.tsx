@@ -126,7 +126,7 @@ export default function MessageBubble({
               </div>
             </div>
           ) : (
-            message.body && <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>
+            message.body && <p className="whitespace-pre-wrap break-words text-[15px] leading-7">{message.body}</p>
           )}
         </div>
 

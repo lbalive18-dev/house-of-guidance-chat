@@ -27,6 +27,7 @@ import AnnouncementsPage from '@/pages/hog/AnnouncementsPage';
 import EventsPage from '@/pages/hog/EventsPage';
 
 import AdminRoute from '@/components/admin/AdminRoute';
+import AdminClaimPage from '@/pages/admin/AdminClaimPage';
 import AdminUsersPage from '@/pages/admin/AdminUsersPage';
 import AdminReportsPage from '@/pages/admin/AdminReportsPage';
 import AdminBroadcastPage from '@/pages/admin/AdminBroadcastPage';
@@ -179,6 +180,14 @@ export const router = createBrowserRouter([
       },
 
       // Admin
+      {
+        path: '/admin/claim',
+        element: (
+          <AppLayout>
+            <AdminClaimPage />
+          </AppLayout>
+        ),
+      },
       {
         element: <AdminRoute />,
         children: [

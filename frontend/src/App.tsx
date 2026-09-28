@@ -28,7 +28,17 @@ export default function App() {
     unlockCallAudio();
     setAcceptingCallId(session.id);
     try {
-      await acceptCall(session.id);
+      const accepted = await acceptCall(session.id);
+      // Hand the accepted session to the chat window so it can bring up
+      // media immediately even if the active-call fetch races the commit.
+      try {
+        sessionStorage.setItem(
+          'hog-accepted-call',
+          JSON.stringify({ sessionId: accepted.id, conversationId: accepted.conversation_id, at: Date.now() }),
+        );
+      } catch {
+        // storage unavailable — chat falls back to polling the API
+      }
       dismissRinging();
       void router.navigate(`/chat/${session.conversation_id}`);
     } catch (error) {

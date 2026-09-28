@@ -14,6 +14,7 @@ export default function RoomsPage() {
   const [liveRoomId, setLiveRoomId] = useState<number | null>(null);
   const currentUser = useAuthStore((s) => s.user);
   const navigate = useNavigate();
+  const isAdmin = currentUser?.role === 'admin';
 
   useEffect(() => {
     fetchRooms()
@@ -102,7 +103,9 @@ export default function RoomsPage() {
                     <p className="truncate text-sm text-gray-500 dark:text-gray-400">
                       {room.description || (isQuran ? 'Read and reflect on the Qur’an together.' : 'Practise Yassarna reading together.')}
                     </p>
-                    <p className="mt-1 text-xs text-gray-400">{room.participant_count} members</p>
+                    {isAdmin && (
+                      <p className="mt-1 text-xs text-gray-400">{room.participant_count} members</p>
+                    )}
                   </div>
                   {!room.is_member && (
                     <span className="btn-accent shrink-0 rounded-full px-4 py-2 text-xs">

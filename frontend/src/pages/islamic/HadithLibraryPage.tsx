@@ -91,6 +91,7 @@ export default function HadithLibraryPage() {
   const [total, setTotal] = useState(0);
   const [readerId, setReaderId] = useState<number | null>(null);
   const [readerHadith, setReaderHadith] = useState<Hadith | null>(null);
+  const [pendingReaderEdge, setPendingReaderEdge] = useState<'first' | 'last' | null>(null);
   const [loadingBooks, setLoadingBooks] = useState(true);
   const [loadingList, setLoadingList] = useState(false);
   const [error, setError] = useState('');
@@ -155,6 +156,7 @@ export default function HadithLibraryPage() {
     setQuery('');
     setPage(1);
     setReaderId(null);
+    setPendingReaderEdge(null);
     setError('');
   };
 
@@ -162,6 +164,52 @@ export default function HadithLibraryPage() {
     () => hadiths.find((h) => h.id === readerId) ?? readerHadith,
     [hadiths, readerId, readerHadith],
   );
+
+  const readerIndex = readerId === null ? -1 : hadiths.findIndex((h) => h.id === readerId);
+  const canGoPrev = readerId !== null && (readerIndex > 0 || (readerIndex <= 0 && page > 1));
+  const canGoNext =
+    readerId !== null &&
+    ((readerIndex >= 0 && readerIndex < hadiths.length - 1) || page < lastPage);
+
+  // After a reader-driven page turn, select the edge entry of the new page
+  // so Prev/Next walks the book's actual backend ordering without changing
+  // the selected book, chapter, or search.
+  useEffect(() => {
+    if (!pendingReaderEdge || hadiths.length === 0) return;
+    const edge = pendingReaderEdge === 'first' ? hadiths[0] : hadiths[hadiths.length - 1];
+    setPendingReaderEdge(null);
+    setReaderId(edge.id);
+  }, [hadiths, pendingReaderEdge]);
+
+  const stepReader = (delta: -1 | 1) => {
+    if (readerId === null) return;
+    if (readerIndex >= 0) {
+      const nextIndex = readerIndex + delta;
+      if (nextIndex >= 0 && nextIndex < hadiths.length) {
+        setReaderId(hadiths[nextIndex].id);
+        return;
+      }
+      if (nextIndex < 0 && page > 1) {
+        setPendingReaderEdge('last');
+        setPage((p) => Math.max(1, p - 1));
+        return;
+      }
+      if (nextIndex >= hadiths.length && page < lastPage) {
+        setPendingReaderEdge('first');
+        setPage((p) => Math.min(lastPage, p + 1));
+      }
+      return;
+    }
+    // Reader was opened from another page/filter snapshot — walk pages
+    // without touching the book, chapter, or search.
+    if (delta < 0 && page > 1) {
+      setPendingReaderEdge('last');
+      setPage((p) => Math.max(1, p - 1));
+    } else if (delta > 0 && page < lastPage) {
+      setPendingReaderEdge('first');
+      setPage((p) => Math.min(lastPage, p + 1));
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f6f8f4] dark:bg-slate-950">
@@ -423,6 +471,28 @@ export default function HadithLibraryPage() {
                 )}
                 {reader.grade && <p>Grade: {reader.grade}</p>}
                 {reader.chapter && <p>Chapter: {reader.chapter}</p>}
+              </div>
+
+              <div className="mt-6 flex items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+                <button
+                  type="button"
+                  disabled={!canGoPrev}
+                  onClick={() => stepReader(-1)}
+                  className="inline-flex items-center gap-1 rounded-2xl border bg-white px-4 py-2 text-sm font-semibold disabled:opacity-40 dark:bg-slate-950"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Previous
+                </button>
+                <span className="text-xs text-gray-500">
+                  {selected ? `${selected.title_en}` : ''} • Page {page} of {lastPage}
+                </span>
+                <button
+                  type="button"
+                  disabled={!canGoNext}
+                  onClick={() => stepReader(1)}
+                  className="inline-flex items-center gap-1 rounded-2xl border bg-white px-4 py-2 text-sm font-semibold disabled:opacity-40 dark:bg-slate-950"
+                >
+                  Next <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
             </div>
           </div>

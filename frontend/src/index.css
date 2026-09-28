@@ -111,3 +111,41 @@ html {
   background-image: radial-gradient(circle at 1px 1px, rgba(11, 110, 79, 0.08) 1px, transparent 0);
   background-size: 18px 18px;
 }
+
+/* Conversation backdrop: faint eight-point star lattice that stays behind
+   solid message bubbles. Opacity is deliberately low so text stays readable
+   in both light and dark modes. */
+.chat-pattern {
+  background-color: #f7f9f6;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(11, 110, 79, 0.07) 1px, transparent 0),
+    radial-gradient(circle at 12px 12px, rgba(212, 175, 55, 0.05) 1px, transparent 0);
+  background-size: 24px 24px, 24px 24px;
+}
+
+.dark .chat-pattern {
+  background-color: #041b15;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(229, 196, 95, 0.06) 1px, transparent 0),
+    radial-gradient(circle at 12px 12px, rgba(11, 110, 79, 0.12) 1px, transparent 0);
+}
+
+/* Lightweight celestial twinkle for the homepage hero. Pure CSS, no images,
+   pointer-events-none in markup so controls stay clickable. */
+@keyframes hog-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.9); }
+  50% { opacity: 0.9; transform: scale(1.1); }
+}
+
+@keyframes hog-drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.hog-stars span {
+  animation: hog-twinkle 3.2s ease-in-out infinite;
+}
+
+.hog-moon {
+  animation: hog-drift 7s ease-in-out infinite;
+}

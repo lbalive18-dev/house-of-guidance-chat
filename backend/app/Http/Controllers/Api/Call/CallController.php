@@ -52,6 +52,8 @@ class CallController extends Controller
 
     /**
      * Active (ringing) call for a conversation, if any — drives call badges.
+     * Always wrapped as {session: ...} so web clients can share one parser
+     * with the incoming-call fallback endpoint.
      */
     public function active(Request $request, Conversation $conversation)
     {
@@ -65,7 +67,9 @@ class CallController extends Controller
 
         $session->load(['initiator', 'participants.user']);
 
-        return new CallSessionResource($session);
+        return response()->json([
+            'session' => (new CallSessionResource($session))->resolve(),
+        ]);
     }
 
     /**

@@ -22,7 +22,7 @@ Artisan::command('hog:make-admin {email}', function (string $email) {
     $this->info('Admin access granted to the existing account. Its password was not changed.');
 
     return self::SUCCESS;
-})->purpose('Grant admin access to a registered account from the trusted server shell');
+})->purpose('Grant admin access to a registered account from the trusted server shell (self-hosted; hosted free plans should use the one-time /admin/claim web page instead)');
 
 // Drop disconnected call participants (and free their room seats) so a
 // lost network or closed tab cannot squat a seat forever. Runs every 15

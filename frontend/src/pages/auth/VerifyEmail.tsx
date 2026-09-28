@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { CheckCircle2, MailWarning } from 'lucide-react';
 import AuthLayout from '@/components/auth/AuthLayout';
+import PwaInstallPrompt from '@/components/pwa/PwaInstallPrompt';
 import { resendVerificationEmail, verifyEmail } from '@/lib/authApi';
 import { useAuthStore } from '@/store/authStore';
 
@@ -83,6 +84,7 @@ export default function VerifyEmail() {
           Skip for now
         </Link>
       </div>
+      <PwaInstallPrompt />
     </AuthLayout>
   );
 }
