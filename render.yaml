@@ -58,6 +58,11 @@ services:
         sync: false
       - key: MAIL_MAILER
         value: brevo-api
+      # Brevo HTTPS API key (free 300/day). Verification and password-reset
+      # emails cannot send until this is set — create it under Brevo
+      # dashboard SMTP & API, paste it here, and redeploy.
+      - key: BREVO_API_KEY
+        sync: false
       - key: PUBLIC_DISK_DRIVER
         value: supabase
       - key: AVATARS_DISK_DRIVER

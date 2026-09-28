@@ -79,6 +79,13 @@ docker run --rm -v $(pwd)/backend:/app -w /app php:8.3-cli php artisan key:gener
 2. Under **SMTP & API**, copy your SMTP credentials into `backend/.env`'s
    `MAIL_USERNAME` / `MAIL_PASSWORD`.
 
+> Render path: the hosted backend sends via the Brevo HTTPS API instead
+> of SMTP, so it needs a **Brevo API key** (`BREVO_API_KEY` in the Render
+> dashboard, then redeploy) — verification emails silently fail without
+> it. Also validate the sender address in your Brevo account (Brevo
+> rejects unvalidated senders); the app sends from `MAIL_FROM_ADDRESS`
+> (`noreply@houseofguidance.org` unless you override it in the dashboard).
+
 ## 7. Deploy
 
 ```bash

@@ -61,6 +61,9 @@ class FirstAdminController extends Controller
             'verified' => $verified,
             'eligible' => $eligible,
             'is_admin' => $user->role === 'admin',
+            // Boolean only — never reveals whether any credential exists or
+            // what it is. Lets the UI explain an unverifiable email.
+            'mail_configured' => trim((string) config('services.brevo.key', env('BREVO_API_KEY', ''))) !== '',
         ]);
     }
 

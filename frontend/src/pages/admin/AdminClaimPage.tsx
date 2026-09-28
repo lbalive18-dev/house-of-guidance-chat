@@ -12,6 +12,7 @@ interface ClaimStatus {
   verified: boolean;
   eligible: boolean;
   is_admin: boolean;
+  mail_configured: boolean;
 }
 
 /**
@@ -83,7 +84,7 @@ export default function AdminClaimPage() {
           <div className="mt-4 space-y-1.5 rounded-2xl border border-gray-200 px-4 py-3 text-left text-xs leading-5 dark:border-gray-800">
             <StatusRow ok={!status.admin_exists} label="No admin exists yet" hint={status.admin_exists ? 'An admin already claimed access — ask them to upgrade you.' : 'Good — the claim is still open.'} />
             <StatusRow ok={status.configured} label="Server allowlist is set" hint={status.configured ? 'Server is configured.' : 'FIRST_ADMIN_EMAIL is missing on the server — set it in the Render dashboard and redeploy.'} />
-            <StatusRow ok={status.verified} label="Your email is verified" hint={status.verified ? `Verified as ${user?.email}.` : 'Open the verification link in your inbox first.'} />
+            <StatusRow ok={status.verified} label="Your email is verified" hint={status.verified ? `Verified as ${user?.email}.` : status.mail_configured ? 'Open the verification link in your inbox first (check spam, or resend from the verify page).' : 'The server cannot send emails yet — set BREVO_API_KEY in the Render dashboard and redeploy, then resend the verification email.'} />
             <StatusRow ok={status.eligible} label="Signed in with the allowlisted email" hint={status.eligible ? 'This account matches.' : 'Sign in with the exact email you put in FIRST_ADMIN_EMAIL.'} />
           </div>
         )}
