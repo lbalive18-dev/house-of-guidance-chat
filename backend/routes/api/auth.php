@@ -37,6 +37,10 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('throttle:6,1')
         ->name('verification.send');
 
+    Route::post('/email/verify-code', [EmailVerificationController::class, 'verifyCode'])
+        ->middleware('throttle:10,1')
+        ->name('verification.verify-code');
+
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile', [ProfileController::class, 'update']);
     Route::put('/profile/password', [ProfileController::class, 'updatePassword']);

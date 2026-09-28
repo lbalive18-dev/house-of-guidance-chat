@@ -34,11 +34,17 @@ class VerifyEmailNotification extends BaseVerifyEmail
     {
         $url = $this->verificationUrl($notifiable);
 
+        // Typed-code fallback for the same email: link-clicking breaks on
+        // some in-app browsers and tracker rewrites, but a code typed into
+        // the app always works. Issued fresh with every send; expires fast.
+        $code = \App\Models\EmailVerificationCode::issueFor($notifiable->getEmailForVerification());
+
         return (new MailMessage)
             ->subject('Verify your House of Guidance Chat email')
             ->greeting('As-salamu alaykum, '.$notifiable->name.'!')
             ->line('Please confirm your email address to finish setting up your House of Guidance Chat account.')
             ->action('Verify Email Address', $url)
-            ->line('If you did not create an account, no further action is required.');
+            ->line('If the button does not work, open the app, go to Verify Email, and enter this code instead: '.$code)
+            ->line('The code expires in 30 minutes. If you did not create an account, no further action is required.');
     }
 }

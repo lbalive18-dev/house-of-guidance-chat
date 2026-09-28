@@ -75,6 +75,11 @@ export async function verifyEmail(verifyUrl: string): Promise<string> {
   return data.message;
 }
 
+export async function verifyEmailCode(code: string): Promise<string> {
+  const { data } = await api.post<{ message: string }>('/api/email/verify-code', { code });
+  return data.message;
+}
+
 export interface UpdateProfilePayload {
   name?: string;
   email?: string;
