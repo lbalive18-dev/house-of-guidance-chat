@@ -16,6 +16,17 @@ services:
         value: production
       - key: APP_DEBUG
         value: false
+      # REQUIRED and must be stable: without a persistent APP_KEY the server
+      # generates a throwaway key on every boot, which silently logs out all
+      # users and kills every pending email-verification link on each
+      # restart/redeploy (Render free services restart often). Generate one
+      # locally with
+      #   $b = New-Object byte[] 32; (New-Object System.Security.Cryptography.RNGCryptoServiceProvider).GetBytes($b); 'base64:' + [Convert]::ToBase64String($b)
+      # paste the whole `base64:...` string here, and never change it again
+      # unless you accept logging everyone out (same reason password-reset
+      # and verification links die when the key rotates).
+      - key: APP_KEY
+        sync: false
       # Production SPA is served by the Cloudflare Worker.
       - key: FRONTEND_URL
         value: https://house-of-guidance-chat.lbalive18.workers.dev
