@@ -1,10 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ShieldCheck } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { apiErrorMessage } from '@/lib/apiError';
 import { useAuthStore } from '@/store/authStore';
+
+interface ClaimStatus {
+  admin_exists: boolean;
+  configured: boolean;
+  verified: boolean;
+  eligible: boolean;
+  is_admin: boolean;
+}
 
 /**
  * One-time first-admin claim — the supported path on hosts without server
@@ -16,6 +24,14 @@ export default function AdminClaimPage() {
   const loadUser = useAuthStore((s) => s.loadUser);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [status, setStatus] = useState<ClaimStatus | null>(null);
+
+  useEffect(() => {
+    api
+      .get<ClaimStatus>('/api/admin/claim/status')
+      .then(({ data }) => setStatus(data))
+      .catch(() => undefined);
+  }, []);
 
   const handleClaim = async () => {
     setBusy(true);
@@ -63,6 +79,15 @@ export default function AdminClaimPage() {
           )}
         </div>
 
+        {status && !status.is_admin && user?.role !== 'admin' && (
+          <div className="mt-4 space-y-1.5 rounded-2xl border border-gray-200 px-4 py-3 text-left text-xs leading-5 dark:border-gray-800">
+            <StatusRow ok={!status.admin_exists} label="No admin exists yet" hint={status.admin_exists ? 'An admin already claimed access — ask them to upgrade you.' : 'Good — the claim is still open.'} />
+            <StatusRow ok={status.configured} label="Server allowlist is set" hint={status.configured ? 'Server is configured.' : 'FIRST_ADMIN_EMAIL is missing on the server — set it in the Render dashboard and redeploy.'} />
+            <StatusRow ok={status.verified} label="Your email is verified" hint={status.verified ? `Verified as ${user?.email}.` : 'Open the verification link in your inbox first.'} />
+            <StatusRow ok={status.eligible} label="Signed in with the allowlisted email" hint={status.eligible ? 'This account matches.' : 'Sign in with the exact email you put in FIRST_ADMIN_EMAIL.'} />
+          </div>
+        )}
+
         {done || user?.role === 'admin' ? (
           <Link to="/admin/users" className="btn-primary mt-6 w-full">
             Open admin panel
@@ -82,6 +107,21 @@ export default function AdminClaimPage() {
             Verify your email first
           </Link>
         )}
+      </div>
+    </div>
+  );
+}
+
+function StatusRow({ ok, label, hint }: { ok: boolean; label: string; hint: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span
+        aria-hidden
+        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${ok ? 'bg-emerald-500' : 'bg-red-500'}`}
+      />
+      <div>
+        <p className="font-bold text-gray-700 dark:text-gray-200">{label}</p>
+        <p className="text-gray-500 dark:text-gray-400">{hint}</p>
       </div>
     </div>
   );

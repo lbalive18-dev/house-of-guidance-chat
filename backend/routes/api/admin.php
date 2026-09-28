@@ -25,6 +25,7 @@ Route::middleware('auth:sanctum')->post('/reports', [ReportController::class, 's
 
 // One-time first-admin claim (verified email + env-guarded, no shell needed).
 Route::middleware(['auth:sanctum', 'throttle:10,1'])->post('/admin/claim', FirstAdminController::class);
+Route::middleware(['auth:sanctum', 'throttle:30,1'])->get('/admin/claim/status', [FirstAdminController::class, 'status']);
 
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     Route::get('/users', [AdminUserController::class, 'index']);
