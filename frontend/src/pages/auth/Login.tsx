@@ -33,8 +33,10 @@ export default function Login() {
       const user = await login(values);
       setUser(user);
       toast.success(`Welcome back, ${(user.name ?? 'User').split(' ')[0]}!`);
-      const from = (location.state as { from?: Location })?.from?.pathname ?? '/';
-      navigate(from, { replace: true });
+      // Return to where the user came from, keeping the query string so
+      // email-verification links (?verify_url=...) survive the login bounce.
+      const from = (location.state as { from?: { pathname?: string; search?: string } })?.from;
+      navigate(`${from?.pathname ?? '/'}${from?.search ?? ''}`, { replace: true });
     } catch (err) {
       if (isAxiosError<ApiErrorResponse>(err) && err.response?.status === 422) {
         setError('email', { message: err.response.data.errors?.email?.[0] ?? err.response.data.message });
