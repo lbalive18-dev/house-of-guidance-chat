@@ -97,8 +97,9 @@ export default function AdminClaimPage() {
           <button
             type="button"
             onClick={() => void handleClaim()}
-            disabled={busy || !user?.email_verified_at}
+            disabled={busy}
             className="btn-primary mt-6 w-full"
+            title={!user?.email_verified_at ? 'The server will tell you exactly what is missing' : undefined}
           >
             {busy ? 'Claiming…' : 'Claim admin'}
           </button>
