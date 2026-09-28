@@ -102,6 +102,26 @@ export async function sendSignal(
   await api.post(`/api/calls/${sessionId}/signal`, signal);
 }
 
+export interface StoredSignal {
+  id: number;
+  session_id: number;
+  from_user_id: number;
+  to_user_id: number | null;
+  signal_type: 'offer' | 'answer' | 'ice';
+  payload: Record<string, unknown>;
+}
+
+/**
+ * Fallback signal reader: returns envelopes stored since `afterId` while
+ * connecting, so negotiation completes even with a dead websocket.
+ */
+export async function fetchSignals(sessionId: number, afterId: number): Promise<StoredSignal[]> {
+  const { data } = await api.get<{ signals: StoredSignal[] }>(`/api/calls/${sessionId}/signals`, {
+    params: { after_id: afterId },
+  });
+  return data.signals;
+}
+
 export async function removeCallParticipant(sessionId: number, userId: number): Promise<void> {
   await api.delete(`/api/calls/${sessionId}/participants/${userId}`);
 }

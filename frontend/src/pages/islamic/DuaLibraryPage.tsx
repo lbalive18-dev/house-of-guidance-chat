@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Search } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ChevronRight, Search } from 'lucide-react';
 import { fetchDuaCategories, fetchDuas } from '@/lib/islamicApi';
 import ShareReminderButton from '@/components/islamic/ShareReminderButton';
 import type { Dua } from '@/types/islamic';
@@ -11,6 +11,7 @@ export default function DuaLibraryPage() {
   const [category, setCategory] = useState<string>('');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchDuaCategories().then(setCategories);
@@ -83,14 +84,24 @@ export default function DuaLibraryPage() {
 
       <div className="space-y-3">
         {!loading &&
-          duas.map((dua) => {
+          duas.map((dua, i) => {
             const shareText = `${dua.title}\n\n${dua.arabic_text}\n${dua.transliteration ?? ''}\n\n"${dua.translation}"\n${dua.reference ?? ''}\n\nShared from House of Guidance Chat`;
 
             return (
-              <div key={dua.id} className="card px-5 py-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-50">{dua.title}</h3>
-                  <ShareReminderButton text={shareText} />
+              <div
+                key={dua.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/islamic/duas/${dua.id}`, { state: { ids: duas.map((d) => d.id), index: i, back: '/islamic/duas' } })}
+                onKeyDown={(e) => e.key === 'Enter' && navigate(`/islamic/duas/${dua.id}`, { state: { ids: duas.map((d) => d.id), index: i, back: '/islamic/duas' } })}
+                className="card cursor-pointer px-5 py-4 transition hover:-translate-y-0.5 hover:border-secondary/45"
+              >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <h3 className="min-w-0 flex-1 truncate font-semibold text-gray-900 dark:text-gray-50">{dua.title}</h3>
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <ShareReminderButton text={shareText} />
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" />
                 </div>
                 <p dir="rtl" className="font-arabic text-right text-lg leading-relaxed text-gray-900 dark:text-gray-50">
                   {dua.arabic_text}

@@ -17,6 +17,7 @@ use App\Http\Requests\Call\StartCallRequest;
 use App\Http\Resources\CallSessionResource;
 use App\Models\CallParticipant;
 use App\Models\CallSession;
+use App\Models\CallSignalRecord;
 use App\Models\Conversation;
 use App\Models\RoomSeat;
 use App\Models\User;
@@ -387,6 +388,9 @@ class CallController extends Controller
      * WebRTC signaling relay (offer / answer / ICE). The server
      * authorizes both ends and forwards the envelope — media itself
      * travels peer-to-peer (or a future SFU), never through here.
+     *
+     * Envelopes are ALSO stored briefly so devices whose websocket is
+     * down can still poll them while connecting (see signals()).
      */
     public function signal(Request $request, CallSession $session)
     {
@@ -410,6 +414,23 @@ class CallController extends Controller
             abort_unless($recipientJoined, 422, 'The recipient is not in this call.');
         }
 
+        try {
+            CallSignalRecord::create([
+                'call_session_id' => $session->id,
+                'from_user_id' => $user->id,
+                'to_user_id' => $validated['to_user_id'] ?? null,
+                'signal_type' => $validated['signal_type'],
+                'payload' => $validated['payload'],
+            ]);
+
+            // Best-effort prune: signaling rows are worthless after minutes.
+            CallSignalRecord::where('created_at', '<', now()->subMinutes(10))->delete();
+        } catch (\Throwable $exception) {
+            // Persistence is a fallback convenience — a storage hiccup must
+            // never block the instant broadcast path below.
+            report($exception);
+        }
+
         $this->broadcastSafely(new CallSignal(
             $session->id,
             $session->conversation_id,
@@ -420,6 +441,44 @@ class CallController extends Controller
         ));
 
         return response()->noContent();
+    }
+
+    /**
+     * Poll stored signaling envelopes addressed to the requester.
+     *
+     * Devices poll this while connecting so negotiation completes even
+     * when their websocket subscription is down. Only envelopes sent by
+     * someone else, addressed to everyone or to the requester, after the
+     * given cursor are returned (oldest first, capped).
+     */
+    public function signals(Request $request, CallSession $session)
+    {
+        $user = $request->user();
+        $this->authorizeCallMember($request, $session);
+        abort_if(! $session->isLive(), 410, 'This call has already ended.');
+
+        $afterId = (int) $request->query('after_id', 0);
+
+        $signals = CallSignalRecord::query()
+            ->where('call_session_id', $session->id)
+            ->where('id', '>', $afterId)
+            ->where('from_user_id', '!=', $user->id)
+            ->where(function ($query) use ($user) {
+                $query->whereNull('to_user_id')->orWhere('to_user_id', $user->id);
+            })
+            ->orderBy('id')
+            ->limit(50)
+            ->get()
+            ->map(fn (CallSignalRecord $record) => [
+                'id' => $record->id,
+                'session_id' => $session->id,
+                'from_user_id' => $record->from_user_id,
+                'to_user_id' => $record->to_user_id,
+                'signal_type' => $record->signal_type,
+                'payload' => $record->payload,
+            ]);
+
+        return response()->json(['signals' => $signals]);
     }
 
     /**

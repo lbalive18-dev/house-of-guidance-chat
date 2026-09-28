@@ -15,9 +15,8 @@ export async function createGroup(payload: CreateGroupPayload): Promise<Conversa
   payload.member_ids.forEach((id) => formData.append('member_ids[]', String(id)));
   if (payload.avatar) formData.append('avatar', payload.avatar);
 
-  const { data } = await api.post<Conversation>('/api/conversations/group', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  // No manual Content-Type: the browser must set the multipart boundary.
+  const { data } = await api.post<Conversation>('/api/conversations/group', formData);
   return data;
 }
 
@@ -37,9 +36,8 @@ export async function updateGroup(
   if (payload.description !== undefined) formData.append('description', payload.description);
   if (payload.avatar) formData.append('avatar', payload.avatar);
 
-  const { data } = await api.post<Conversation>(`/api/conversations/${conversationId}/group`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  // No manual Content-Type: the browser must set the multipart boundary.
+  const { data } = await api.post<Conversation>(`/api/conversations/${conversationId}/group`, formData);
   return data;
 }
 

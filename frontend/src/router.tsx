@@ -6,6 +6,7 @@ import GuestRoute from '@/components/auth/GuestRoute';
 
 import Dashboard from '@/pages/Dashboard';
 import ProfileSettings from '@/pages/ProfileSettings';
+import SettingsPage from '@/pages/SettingsPage';
 import Chat from '@/pages/Chat';
 
 import Login from '@/pages/auth/Login';
@@ -21,6 +22,8 @@ import IslamicCalendarPage from '@/pages/islamic/IslamicCalendarPage';
 import QuranPage from '@/pages/islamic/QuranPage';
 import QuranReaderPage from '@/pages/islamic/QuranReaderPage';
 import HadithLibraryPage from '@/pages/islamic/HadithLibraryPage';
+import HadithReaderPage from '@/pages/islamic/HadithReaderPage';
+import DuaReaderPage from '@/pages/islamic/DuaReaderPage';
 
 import RoomsPage from '@/pages/hog/RoomsPage';
 import AnnouncementsPage from '@/pages/hog/AnnouncementsPage';
@@ -83,6 +86,15 @@ export const router = createBrowserRouter([
       },
 
       {
+        path: '/settings',
+        element: (
+          <AppLayout>
+            <SettingsPage />
+          </AppLayout>
+        ),
+      },
+
+      {
         path: '/chat/:conversationId',
         element: <Chat />,
       },
@@ -138,6 +150,24 @@ export const router = createBrowserRouter([
         element: (
           <AppLayout>
             <HadithLibraryPage />
+          </AppLayout>
+        ),
+      },
+
+      {
+        path: '/islamic/hadith/:hadithId',
+        element: (
+          <AppLayout>
+            <HadithReaderPage />
+          </AppLayout>
+        ),
+      },
+
+      {
+        path: '/islamic/duas/:duaId',
+        element: (
+          <AppLayout>
+            <DuaReaderPage />
           </AppLayout>
         ),
       },

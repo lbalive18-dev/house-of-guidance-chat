@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
-  ArrowRight,
   BookMarked,
   ChevronLeft,
   ChevronRight,
@@ -11,7 +10,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import {
-  fetchHadith,
   fetchHadithBooks,
   fetchHadithChapters,
   fetchHadiths,
@@ -89,12 +87,10 @@ export default function HadithLibraryPage() {
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [readerId, setReaderId] = useState<number | null>(null);
-  const [readerHadith, setReaderHadith] = useState<Hadith | null>(null);
-  const [pendingReaderEdge, setPendingReaderEdge] = useState<'first' | 'last' | null>(null);
   const [loadingBooks, setLoadingBooks] = useState(true);
   const [loadingList, setLoadingList] = useState(false);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchHadithBooks()
@@ -139,76 +135,25 @@ export default function HadithLibraryPage() {
     };
   }, [selected, chapter, query, page]);
 
-  useEffect(() => {
-    if (readerId === null) {
-      setReaderHadith(null);
-      return;
-    }
-
-    fetchHadith(readerId)
-      .then(setReaderHadith)
-      .catch(() => setError('Unable to open this hadith.'));
-  }, [readerId]);
-
   const openBook = (book: HadithBook) => {
     setSelected(book);
     setChapter('');
     setQuery('');
     setPage(1);
-    setReaderId(null);
-    setPendingReaderEdge(null);
     setError('');
   };
 
-  const reader = useMemo(
-    () => hadiths.find((h) => h.id === readerId) ?? readerHadith,
-    [hadiths, readerId, readerHadith],
-  );
-
-  const readerIndex = readerId === null ? -1 : hadiths.findIndex((h) => h.id === readerId);
-  const canGoPrev = readerId !== null && (readerIndex > 0 || (readerIndex <= 0 && page > 1));
-  const canGoNext =
-    readerId !== null &&
-    ((readerIndex >= 0 && readerIndex < hadiths.length - 1) || page < lastPage);
-
-  // After a reader-driven page turn, select the edge entry of the new page
-  // so Prev/Next walks the book's actual backend ordering without changing
-  // the selected book, chapter, or search.
-  useEffect(() => {
-    if (!pendingReaderEdge || hadiths.length === 0) return;
-    const edge = pendingReaderEdge === 'first' ? hadiths[0] : hadiths[hadiths.length - 1];
-    setPendingReaderEdge(null);
-    setReaderId(edge.id);
-  }, [hadiths, pendingReaderEdge]);
-
-  const stepReader = (delta: -1 | 1) => {
-    if (readerId === null) return;
-    if (readerIndex >= 0) {
-      const nextIndex = readerIndex + delta;
-      if (nextIndex >= 0 && nextIndex < hadiths.length) {
-        setReaderId(hadiths[nextIndex].id);
-        return;
-      }
-      if (nextIndex < 0 && page > 1) {
-        setPendingReaderEdge('last');
-        setPage((p) => Math.max(1, p - 1));
-        return;
-      }
-      if (nextIndex >= hadiths.length && page < lastPage) {
-        setPendingReaderEdge('first');
-        setPage((p) => Math.min(lastPage, p + 1));
-      }
-      return;
-    }
-    // Reader was opened from another page/filter snapshot — walk pages
-    // without touching the book, chapter, or search.
-    if (delta < 0 && page > 1) {
-      setPendingReaderEdge('last');
-      setPage((p) => Math.max(1, p - 1));
-    } else if (delta > 0 && page < lastPage) {
-      setPendingReaderEdge('first');
-      setPage((p) => Math.min(lastPage, p + 1));
-    }
+  const openReader = (hadith: Hadith, index: number) => {
+    navigate(`/islamic/hadith/${hadith.id}`, {
+      state: {
+        ids: hadiths.map((h) => h.id),
+        index,
+        collection: selected?.collection,
+        chapter: chapter || undefined,
+        q: query || undefined,
+        back: '/islamic/hadith',
+      },
+    });
   };
 
   return (
@@ -306,10 +251,7 @@ export default function HadithLibraryPage() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setSelected(null);
-                  setReaderId(null);
-                }}
+                onClick={() => setSelected(null)}
                 className="text-xs font-semibold text-emerald-700"
               >
                 Back to shelf
@@ -395,9 +337,9 @@ export default function HadithLibraryPage() {
                           key={hadith.id}
                           role="button"
                           tabIndex={0}
-                          onClick={() => setReaderId(hadith.id)}
-                          onKeyDown={(e) => e.key === 'Enter' && setReaderId(hadith.id)}
-                          className="cursor-pointer"
+                          onClick={() => openReader(hadith, i)}
+                          onKeyDown={(e) => e.key === 'Enter' && openReader(hadith, i)}
+                          className="cursor-pointer transition hover:-translate-y-0.5"
                         >
                           <HadithCard hadith={hadith} number={(page - 1) * 20 + i + 1} />
                         </div>
@@ -431,70 +373,6 @@ export default function HadithLibraryPage() {
                 )}
               </>
             )}
-          </div>
-        )}
-
-        {reader && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-6" onClick={() => setReaderId(null)}>
-            <div
-              className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-white p-6 dark:bg-slate-900 sm:rounded-3xl md:p-8"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">
-                  {selected?.title_en} • No. {reader.hadith_number ?? reader.id}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setReaderId(null)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500"
-                >
-                  Close <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
-
-              {reader.arabic_text && (
-                <p dir="rtl" lang="ar" className="font-arabic rounded-2xl bg-[#fbfcf9] px-5 py-7 text-right text-2xl leading-[2.1] dark:bg-slate-950/60 md:text-3xl">
-                  {reader.arabic_text}
-                </p>
-              )}
-
-              <p className="mt-5 border-l-4 border-emerald-600 pl-4 text-base leading-8 text-gray-700 dark:text-gray-200">
-                &ldquo;{reader.text}&rdquo;
-              </p>
-
-              <div className="mt-4 text-sm text-gray-500">
-                {reader.narrator && <p>Narrated by {reader.narrator}</p>}
-                <p className="font-semibold text-secondary-600">{reader.reference}</p>
-                {reader.source_collection && reader.source_number !== null && (
-                  <p>Originally {reader.source_collection} no. {reader.source_number}</p>
-                )}
-                {reader.grade && <p>Grade: {reader.grade}</p>}
-                {reader.chapter && <p>Chapter: {reader.chapter}</p>}
-              </div>
-
-              <div className="mt-6 flex items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
-                <button
-                  type="button"
-                  disabled={!canGoPrev}
-                  onClick={() => stepReader(-1)}
-                  className="inline-flex items-center gap-1 rounded-2xl border bg-white px-4 py-2 text-sm font-semibold disabled:opacity-40 dark:bg-slate-950"
-                >
-                  <ChevronLeft className="h-4 w-4" /> Previous
-                </button>
-                <span className="text-xs text-gray-500">
-                  {selected ? `${selected.title_en}` : ''} • Page {page} of {lastPage}
-                </span>
-                <button
-                  type="button"
-                  disabled={!canGoNext}
-                  onClick={() => stepReader(1)}
-                  className="inline-flex items-center gap-1 rounded-2xl border bg-white px-4 py-2 text-sm font-semibold disabled:opacity-40 dark:bg-slate-950"
-                >
-                  Next <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
           </div>
         )}
       </div>

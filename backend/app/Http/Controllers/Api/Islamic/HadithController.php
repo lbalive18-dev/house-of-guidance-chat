@@ -24,7 +24,43 @@ class HadithController extends Controller
 
     public function index(Request $request)
     {
-        $hadiths = Hadith::query()
+        $hadiths = $this->filteredQuery($request)
+            ->paginate($this->perPage($request, 20));
+
+        return response()->json($hadiths);
+    }
+
+    /**
+     * Previous/next hadith ids around the given row, using the exact same
+     * filters and ordering as index so reader navigation never jumps books
+     * or filters. Returns {prev: {id, hadith_number}|null, next: ...}.
+     */
+    public function neighbors(Request $request, Hadith $hadith)
+    {
+        $rows = $this->filteredQuery($request)
+            ->select(['id', 'hadith_number'])
+            ->get();
+
+        $position = $rows->search(fn ($row) => $row->id === $hadith->id);
+
+        if ($position === false) {
+            return response()->json(['prev' => null, 'next' => null]);
+        }
+
+        $neighbor = fn ($row) => $row ? ['id' => $row->id, 'hadith_number' => $row->hadith_number] : null;
+
+        return response()->json([
+            'prev' => $neighbor($rows->get($position - 1)),
+            'next' => $neighbor($rows->get($position + 1)),
+        ]);
+    }
+
+    /**
+     * Shared filter + ordering pipeline for index and neighbors.
+     */
+    protected function filteredQuery(Request $request)
+    {
+        return Hadith::query()
             ->when($request->filled('collection'), fn ($q) => $q->where('collection', $request->string('collection')))
             ->when($request->filled('category'), fn ($q) => $q->where('category', $request->string('category')))
             ->when($request->filled('q'), function ($q) use ($request) {
@@ -57,10 +93,7 @@ class HadithController extends Controller
             ->when($request->filled('chapter'), fn ($q) => $q->where('chapter', $request->string('chapter')))
             ->orderByRaw('hadith_number IS NULL')
             ->orderBy('hadith_number')
-            ->orderBy('id')
-            ->paginate($this->perPage($request, 20));
-
-        return response()->json($hadiths);
+            ->orderBy('id');
     }
 
     public function categories()

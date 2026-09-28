@@ -11,6 +11,7 @@ export default function SearchUsers() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
   const [starting, setStarting] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -23,9 +24,17 @@ export default function SearchUsers() {
     }
 
     setLoading(true);
+    setSearchFailed(false);
     const timeout = setTimeout(() => {
       searchUsers(query)
-        .then(setResults)
+        .then((users) => {
+          setResults(users);
+          setSearchFailed(false);
+        })
+        .catch(() => {
+          setResults([]);
+          setSearchFailed(true);
+        })
         .finally(() => setLoading(false));
     }, 300);
 
@@ -89,7 +98,11 @@ export default function SearchUsers() {
         <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-gray-100 bg-white shadow-card dark:border-gray-800 dark:bg-gray-900">
           {loading && <p className="px-4 py-3 text-sm text-gray-400">Searching…</p>}
 
-          {!loading && results.length === 0 && (
+          {!loading && searchFailed && (
+            <p className="px-4 py-3 text-sm text-red-600">Search is unavailable. Check your connection and try again.</p>
+          )}
+
+          {!loading && !searchFailed && results.length === 0 && (
             <p className="px-4 py-3 text-sm text-gray-400">No people found for &ldquo;{query}&rdquo;.</p>
           )}
 

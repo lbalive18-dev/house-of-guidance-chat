@@ -10,6 +10,7 @@ import {
   fetchActiveCall,
   fetchCall,
   fetchIceServers,
+  fetchSignals,
   joinCall,
   leaveCall,
   leaveCallBeacon,
@@ -72,6 +73,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
   const mountedRef = useRef(true);
   const localStreamRef = useRef<MediaStream | null>(null);
   const adoptingSelfRef = useRef(new Set<number>());
+  const signalCursorRef = useRef(new Map<number, number>());
 
   sessionRef.current = session;
 
@@ -99,6 +101,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
     transportRef.current?.close();
     transportRef.current = null;
     localStreamRef.current = null;
+    signalCursorRef.current.clear();
     setLocalStream((current) => {
       stopMediaStream(current);
       return null;
@@ -782,6 +785,93 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
 
   // ---- realtime signaling --------------------------------------------------
 
+  /**
+   * One entry point for incoming WebRTC envelopes, shared by the Reverb
+   * listener and the HTTP fallback poller below. Re-deliveries are safe:
+   * the mesh transport ignores out-of-state offers/answers/ICE.
+   */
+  const handleRemoteSignal = useCallback(
+    (payload: {
+      session_id: number;
+      from_user_id: number;
+      to_user_id: number | null;
+      signal_type: 'offer' | 'answer' | 'ice';
+      payload: Record<string, unknown>;
+    }) => {
+      if (sessionRef.current?.id !== payload.session_id) return;
+      if (payload.from_user_id === currentUserId) return;
+      if (payload.to_user_id !== null && payload.to_user_id !== currentUserId) return;
+
+      const transport = transportRef.current;
+      if (!transport) {
+        if (payload.signal_type === 'offer') {
+          pendingOffers.current.set(payload.from_user_id, {
+            sdp: payload.payload.sdp as string,
+            type: 'offer',
+          });
+        }
+        return;
+      }
+
+      void (async () => {
+        try {
+          if (payload.signal_type === 'offer') {
+            await transport.handleOffer(payload.from_user_id, {
+              sdp: payload.payload.sdp as string,
+              type: 'offer',
+            });
+          } else if (payload.signal_type === 'answer') {
+            clearOfferRetry(payload.from_user_id);
+            await transport.handleAnswer(payload.from_user_id, {
+              sdp: payload.payload.sdp as string,
+              type: 'answer',
+            });
+          } else {
+            await transport.handleIce(payload.from_user_id, {
+              candidate: payload.payload.candidate as string,
+              sdpMid: payload.payload.sdpMid as string,
+              sdpMLineIndex: payload.payload.sdpMLineIndex as number,
+            });
+          }
+        } catch {
+          // malformed signal — ignore, peers renegotiate on rejoin
+        }
+      })();
+    },
+    [clearOfferRetry, currentUserId],
+  );
+
+  // HTTP fallback: while ringing/connecting, poll stored envelopes so
+  // negotiation completes even when the device's websocket is down.
+  useEffect(() => {
+    if ((viewState !== 'outgoing' && viewState !== 'connecting') || outgoingSessionId === undefined) {
+      return;
+    }
+    const sessionId = outgoingSessionId;
+    let stopped = false;
+
+    const poll = async () => {
+      try {
+        const cursor = signalCursorRef.current.get(sessionId) ?? 0;
+        const stored = await fetchSignals(sessionId, cursor);
+        if (stopped || sessionRef.current?.id !== sessionId) return;
+        for (const signal of stored) {
+          signalCursorRef.current.set(sessionId, Math.max(signalCursorRef.current.get(sessionId) ?? 0, signal.id));
+          handleRemoteSignal(signal);
+        }
+      } catch {
+        // transient — the next tick retries; Reverb stays the fast path
+      }
+    };
+
+    void poll();
+    const timer = window.setInterval(() => void poll(), 1200);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [handleRemoteSignal, outgoingSessionId, viewState]);
+
   useEffect(() => {
     if (!conversationId || currentUserId === undefined) return;
     const echo = getEcho();
@@ -884,45 +974,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
       signal_type: 'offer' | 'answer' | 'ice';
       payload: Record<string, unknown>;
     }) => {
-      if (sessionRef.current?.id !== payload.session_id) return;
-      if (payload.from_user_id === currentUserId) return;
-      if (payload.to_user_id !== null && payload.to_user_id !== currentUserId) return;
-
-      const transport = transportRef.current;
-      if (!transport) {
-        if (payload.signal_type === 'offer') {
-          pendingOffers.current.set(payload.from_user_id, {
-            sdp: payload.payload.sdp as string,
-            type: 'offer',
-          });
-        }
-        return;
-      }
-
-      void (async () => {
-        try {
-          if (payload.signal_type === 'offer') {
-            await transport.handleOffer(payload.from_user_id, {
-              sdp: payload.payload.sdp as string,
-              type: 'offer',
-            });
-          } else if (payload.signal_type === 'answer') {
-            clearOfferRetry(payload.from_user_id);
-            await transport.handleAnswer(payload.from_user_id, {
-              sdp: payload.payload.sdp as string,
-              type: 'answer',
-            });
-          } else {
-            await transport.handleIce(payload.from_user_id, {
-              candidate: payload.payload.candidate as string,
-              sdpMid: payload.payload.sdpMid as string,
-              sdpMLineIndex: payload.payload.sdpMLineIndex as number,
-            });
-          }
-        } catch {
-          // malformed signal — ignore, peers renegotiate on rejoin
-        }
-      })();
+      handleRemoteSignal(payload);
     };
 
     channel.listen('.call.initiated', onInitiated);
@@ -943,7 +995,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
         }
       }
     };
-  }, [adoptSelfJoined, clearOfferRetry, conversationId, currentUserId, offerToJoinedPeers, refreshSession, teardownMedia]);
+  }, [adoptSelfJoined, clearOfferRetry, conversationId, currentUserId, handleRemoteSignal, offerToJoinedPeers, refreshSession, teardownMedia]);
 
   // Signaling and API acceptance only mean the peers exchanged setup data.
   // Mark a call live only after an actual peer connection is established.

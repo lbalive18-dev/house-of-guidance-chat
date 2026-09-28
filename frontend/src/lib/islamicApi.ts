@@ -42,6 +42,23 @@ export async function fetchHadith(id: number): Promise<Hadith> {
   return data;
 }
 
+export interface HadithNeighbor {
+  id: number;
+  hadith_number: number | null;
+}
+
+export async function fetchHadithNeighbors(
+  id: number,
+  params: { collection?: string; category?: string; chapter?: string; q?: string } = {},
+): Promise<{ prev: HadithNeighbor | null; next: HadithNeighbor | null }> {
+  const { data } = await api.get<{ prev: HadithNeighbor | null; next: HadithNeighbor | null }>(
+    `/api/islamic/hadith/${id}/neighbors`,
+    { params },
+  );
+
+  return data;
+}
+
 export async function fetchHadithCategories(): Promise<string[]> {
   const { data } = await api.get<string[]>(
     '/api/islamic/hadith/categories',
@@ -82,6 +99,12 @@ export async function fetchDuaCategories(): Promise<string[]> {
   const { data } = await api.get<string[]>(
     '/api/islamic/duas/categories',
   );
+
+  return data;
+}
+
+export async function fetchDua(id: number): Promise<Dua> {
+  const { data } = await api.get<Dua>(`/api/islamic/duas/${id}`);
 
   return data;
 }

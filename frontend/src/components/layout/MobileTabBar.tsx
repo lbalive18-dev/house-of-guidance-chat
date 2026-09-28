@@ -5,7 +5,7 @@ const TABS = [
   { to: '/', label: 'Home', icon: Home, active: (path: string) => path === '/' },
   { to: '/#messages', label: 'Messages', icon: MessageCircle, active: (path: string) => path.startsWith('/chat') },
   { to: '/rooms', label: 'Community', icon: Users, active: (path: string) => ['/rooms', '/events', '/announcements'].includes(path) },
-  { to: '/settings/profile', label: 'Settings', icon: Settings, active: (path: string) => path.startsWith('/settings') },
+  { to: '/settings', label: 'Settings', icon: Settings, active: (path: string) => path.startsWith('/settings') },
 ];
 
 export default function MobileTabBar() {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Camera, Loader2, Search, Users, X } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
+import { apiErrorMessage } from '@/lib/apiError';
 import { searchUsers } from '@/lib/usersApi';
 import { createGroup } from '@/lib/groupsApi';
 import type { User } from '@/types/auth';
@@ -15,6 +16,8 @@ export default function CreateGroupModal({ onClose }: { onClose: () => void }) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<User[]>([]);
+  const [searchError, setSearchError] = useState('');
+  const [createError, setCreateError] = useState('');
   const [selected, setSelected] = useState<User[]>([]);
   const [creating, setCreating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -28,9 +31,15 @@ export default function CreateGroupModal({ onClose }: { onClose: () => void }) {
       return;
     }
     searchTimeout.current = setTimeout(() => {
-      searchUsers(value).then((users) =>
-        setResults(users.filter((u) => !selected.some((s) => s.id === u.id)))
-      );
+      searchUsers(value)
+        .then((users) => {
+          setSearchError('');
+          setResults(users.filter((u) => !selected.some((s) => s.id === u.id)));
+        })
+        .catch(() => {
+          setResults([]);
+          setSearchError('Search is unavailable right now. Check your connection and try again.');
+        });
     }, 300);
   };
 
@@ -59,6 +68,7 @@ export default function CreateGroupModal({ onClose }: { onClose: () => void }) {
     }
 
     setCreating(true);
+    setCreateError('');
     try {
       const group = await createGroup({
         name: name.trim(),
@@ -69,8 +79,10 @@ export default function CreateGroupModal({ onClose }: { onClose: () => void }) {
       toast.success('Group created!');
       onClose();
       navigate(`/chat/${group.id}`);
-    } catch {
-      toast.error('Could not create the group.');
+    } catch (err) {
+      const message = apiErrorMessage(err, 'Could not create the group.');
+      setCreateError(message);
+      toast.error(message);
     } finally {
       setCreating(false);
     }
@@ -149,6 +161,12 @@ export default function CreateGroupModal({ onClose }: { onClose: () => void }) {
             />
           </div>
 
+          {searchError && (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+              {searchError}
+            </p>
+          )}
+
           {results.length > 0 && (
             <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-100 dark:border-gray-800">
               {results.map((user) => (
@@ -169,7 +187,12 @@ export default function CreateGroupModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="border-t border-gray-100 px-5 py-4 dark:border-gray-800">
-          <button onClick={handleCreate} disabled={creating} className="btn-primary w-full">
+          {createError && (
+            <p className="mb-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+              {createError}
+            </p>
+          )}
+          <button onClick={() => void handleCreate()} disabled={creating} className="btn-primary w-full">
             {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create group'}
           </button>
         </div>

@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->prefix('islamic')->group(function () {
     Route::get('/hadith/collections', [HadithController::class, 'collections']);
     Route::get('/hadith/chapters', [HadithController::class, 'chapters']);
     Route::get('/hadith/{hadith}', [HadithController::class, 'show']);
+    Route::get('/hadith/{hadith}/neighbors', [HadithController::class, 'neighbors']);
 
     Route::get('/duas', [DuaController::class, 'index']);
     Route::get('/duas/categories', [DuaController::class, 'categories']);

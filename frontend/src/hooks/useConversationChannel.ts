@@ -74,7 +74,14 @@ export function useConversationChannel(
 
         if (document.visibilityState === 'hidden') {
           const senderName = message.sender?.name || 'New message';
-          const body = message.body || 'You received a new message';
+          // Privacy preference: name-only notifications until the app opens.
+          let hideBody = false;
+          try {
+            hideBody = window.localStorage.getItem('hog-pref-private-notifications') === '1';
+          } catch {
+            hideBody = false;
+          }
+          const body = hideBody ? 'You received a new message' : message.body || 'You received a new message';
 
           try {
             await showMessageNotification(

@@ -32,6 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/calls/{session}/heartbeat', [CallController::class, 'heartbeat']);
     Route::put('/calls/{session}/media', [CallController::class, 'mediaState']);
     Route::post('/calls/{session}/signal', [CallController::class, 'signal']);
+    Route::get('/calls/{session}/signals', [CallController::class, 'signals']);
     Route::delete('/calls/{session}/participants/{user}', [CallController::class, 'removeParticipant']);
 
     Route::get('/rooms/{conversation}/seats', [RoomSeatController::class, 'index']);
