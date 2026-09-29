@@ -182,6 +182,23 @@ class CallController extends Controller
         $session->load(['initiator', 'participants.user']);
         $this->broadcastSafely(new CallInitiated($session));
 
+        // Ring offline devices with an urgent push: the stored notification
+        // is what their service worker renders, even with the app closed.
+        foreach ($session->participants as $participant) {
+            if ($participant->user_id === $user->id) {
+                continue;
+            }
+            if ($participant->status !== CallParticipant::STATUS_INVITED) {
+                continue;
+            }
+            try {
+                $participant->user?->notify(new \App\Notifications\IncomingCallNotification($session));
+                \App\Jobs\SendPushTickle::dispatch($participant->user_id, 'high', 300);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
+
         return new CallSessionResource($session);
     }
 

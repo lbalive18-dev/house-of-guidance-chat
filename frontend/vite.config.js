@@ -6,6 +6,9 @@ export default defineConfig({
     plugins: [
         react(),
         VitePWA({
+            strategies: 'injectManifest',
+            srcDir: 'src',
+            filename: 'sw.ts',
             registerType: 'autoUpdate',
             includeAssets: ['hog-logo.png'],
             manifest: {
@@ -35,24 +38,13 @@ export default defineConfig({
                     },
                 ],
             },
-            workbox: {
+            injectManifest: {
                 globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
-                // Preserved from the legacy vite.config.js duplicate so API GETs
-                // remain NetworkFirst with a short TTL when offline.
-                runtimeCaching: [
-                    {
-                        urlPattern: /\/api\/.*$/,
-                        handler: 'NetworkFirst',
-                        options: {
-                            cacheName: 'hog-chat-api-cache',
-                            expiration: { maxEntries: 100, maxAgeSeconds: 300 },
-                            networkTimeoutSeconds: 5,
-                        },
-                    },
-                ],
             },
         }),
     ],
+    // Mirror file kept for environments that resolve the legacy JS config.
+    // Its contents are regenerated from vite.config.ts on build.
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),

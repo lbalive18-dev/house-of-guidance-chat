@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  AlarmClock,
   ArrowLeft,
   Bell,
+  BellRing,
   BookOpenText,
   ChevronRight,
   Download,
   GraduationCap,
+  MapPin,
   Moon,
   Palette,
   ScrollText,
@@ -16,9 +19,22 @@ import {
   Sun,
   User,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/context/ThemeContext';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
+import {
+  disablePush,
+  enablePush,
+  fetchReminderPreferences,
+  getPushSubscription,
+  isPushSupported,
+  pushPermission,
+  saveReminderPreferences,
+  sendTestPush,
+  type ReminderPreferences,
+} from '@/lib/push';
+import { apiErrorMessage } from '@/lib/apiError';
 import Avatar from '@/components/ui/Avatar';
 
 function useLocalPref(key: string, initial: boolean): [boolean, () => void] {
@@ -133,6 +149,93 @@ export default function SettingsPage() {
   const [privateNotifications, togglePrivateNotifications] = useLocalPref('hog-pref-private-notifications', false);
   const [installBusy, setInstallBusy] = useState(false);
 
+  const [pushOn, setPushOn] = useState(false);
+  const [pushState, setPushState] = useState<'checking' | 'on' | 'off' | 'blocked' | 'unsupported'>('checking');
+  const [pushBusy, setPushBusy] = useState(false);
+  const [prefs, setPrefs] = useState<ReminderPreferences | null>(null);
+  const [prefsBusy, setPrefsBusy] = useState(false);
+  const [locBusy, setLocBusy] = useState(false);
+
+  useEffect(() => {
+    if (!isPushSupported()) {
+      setPushState('unsupported');
+      return;
+    }
+    if (pushPermission() === 'denied') {
+      setPushState('blocked');
+      return;
+    }
+    void getPushSubscription().then((sub) => {
+      setPushOn(!!sub);
+      setPushState(sub ? 'on' : 'off');
+    });
+    void fetchReminderPreferences().then(setPrefs);
+  }, []);
+
+  const handlePushToggle = async () => {
+    setPushBusy(true);
+    try {
+      if (pushOn) {
+        await disablePush();
+        setPushOn(false);
+        setPushState('off');
+        toast.success('Push disabled on this device.');
+      } else {
+        const outcome = await enablePush();
+        if (outcome === 'enabled') {
+          setPushOn(true);
+          setPushState('on');
+          toast.success('Notifications enabled on this device.');
+        } else if (outcome === 'denied') {
+          setPushState('blocked');
+          toast.error('Notifications are blocked. Allow them in your browser settings.');
+        } else {
+          toast.error('Could not enable notifications on this device.');
+        }
+      }
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const handleTestPush = async () => {
+    const ok = await sendTestPush();
+    toast[ok ? 'success' : 'error'](ok ? 'Test sent — watch for it in a few seconds.' : 'Could not send the test.');
+  };
+
+  const updatePrefs = async (patch: Partial<ReminderPreferences>) => {
+    if (!prefs) return;
+    const next = { ...prefs, ...patch };
+    setPrefs(next);
+    setPrefsBusy(true);
+    try {
+      const ok = await saveReminderPreferences(patch);
+      if (!ok) toast.error(apiErrorMessage(undefined, 'Could not save reminder settings.'));
+    } finally {
+      setPrefsBusy(false);
+    }
+  };
+
+  const useMyLocation = () => {
+    if (!('geolocation' in navigator)) {
+      toast.error('Location is not available on this device.');
+      return;
+    }
+    setLocBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocBusy(false);
+        void updatePrefs({ prayer_lat: pos.coords.latitude, prayer_lng: pos.coords.longitude });
+        toast.success('Home location saved for prayer reminders.');
+      },
+      () => {
+        setLocBusy(false);
+        toast.error('Could not read your location. Enter it manually instead.');
+      },
+      { timeout: 15000 },
+    );
+  };
+
   const handleInstall = async () => {
     setInstallBusy(true);
     try {
@@ -216,6 +319,136 @@ export default function SettingsPage() {
         />
       </Section>
 
+      <Section eyebrow="Notifications">
+        {pushState === 'unsupported' ? (
+          <Row icon={BellRing} title="Push not supported" subtitle="This browser can't receive push notifications" />
+        ) : pushState === 'blocked' ? (
+          <Row icon={BellRing} title="Notifications blocked" subtitle="Allow them in your browser settings, then return here" />
+        ) : (
+          <>
+            <Row
+              icon={BellRing}
+              title="Push on this device"
+              subtitle={
+                pushState === 'checking'
+                  ? 'Checking…'
+                  : pushOn
+                    ? 'Calls, messages, reminders — even with the app closed'
+                    : 'Ring for calls, buzz for messages and reminders'
+              }
+              right={<Toggle on={pushOn} onToggle={() => void handlePushToggle()} label="Push on this device" />}
+            />
+            {pushOn && (
+              <Row
+                icon={Bell}
+                title="Send a test"
+                subtitle="Prove the whole chain works right now"
+                onClick={() => void handleTestPush()}
+              />
+            )}
+          </>
+        )}
+        {pushBusy && <p className="px-4 py-2 text-xs text-gray-400">Working…</p>}
+      </Section>
+
+      <Section eyebrow="Daily reminders">
+        {!prefs ? (
+          <p className="px-4 py-3 text-sm text-gray-400">Loading reminder settings…</p>
+        ) : (
+          <>
+            <Row
+              icon={AlarmClock}
+              title="Daily reminders"
+              subtitle={`Qur'an nudge and Hadith around ${prefs.reminder_time}`}
+              right={<Toggle on={prefs.reminder_enabled} onToggle={() => void updatePrefs({ reminder_enabled: !prefs.reminder_enabled })} label="Daily reminders" />}
+            />
+            <div className="flex items-center gap-3 px-4 py-3.5">
+              <span className="min-w-0 flex-1 text-sm font-bold text-gray-900 dark:text-gray-50">
+                Reminder time
+                <span className="block text-xs font-normal text-gray-500 dark:text-gray-400">Your local time, every day</span>
+              </span>
+              <input
+                type="time"
+                value={prefs.reminder_time}
+                onChange={(e) => void updatePrefs({ reminder_time: e.target.value })}
+                className="input-field w-auto"
+                aria-label="Daily reminder time"
+              />
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3.5">
+              <span className="min-w-0 flex-1 text-sm font-bold text-gray-900 dark:text-gray-50">
+                Time zone
+              </span>
+              <select
+                value={prefs.reminder_timezone}
+                onChange={(e) => void updatePrefs({ reminder_timezone: e.target.value })}
+                className="input-field w-auto max-w-[12rem]"
+                aria-label="Reminder time zone"
+              >
+                {timezones().map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </select>
+            </div>
+            <Row
+              icon={BookOpenText}
+              title="Qur'an reminder"
+              subtitle="“Did you read Qur'an today?” + today's verse"
+              right={<Toggle on={prefs.remind_quran} onToggle={() => void updatePrefs({ remind_quran: !prefs.remind_quran })} label="Qur'an reminder" />}
+            />
+            <Row
+              icon={ScrollText}
+              title="Hadith reminder"
+              subtitle="Hadith of the day, every day"
+              right={<Toggle on={prefs.remind_hadith} onToggle={() => void updatePrefs({ remind_hadith: !prefs.remind_hadith })} label="Hadith reminder" />}
+            />
+            <Row
+              icon={BellRing}
+              title="Prayer reminders"
+              subtitle="Needs a home location below"
+              right={<Toggle on={prefs.remind_salah} onToggle={() => void updatePrefs({ remind_salah: !prefs.remind_salah })} label="Prayer reminders" />}
+            />
+            <div className="space-y-2 px-4 py-3.5">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 shrink-0 text-gray-400" />
+                <p className="text-sm font-bold text-gray-900 dark:text-gray-50">Home location for prayer times</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  value={prefs.prayer_label ?? ''}
+                  onChange={(e) => void updatePrefs({ prayer_label: e.target.value || null })}
+                  placeholder="Label, e.g. Home — Lagos"
+                  className="input-field min-w-0 flex-1"
+                  aria-label="Location label"
+                />
+                <button type="button" onClick={useMyLocation} disabled={locBusy} className="btn-secondary shrink-0 px-3 py-2 text-xs">
+                  {locBusy ? 'Locating…' : 'Use my location'}
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={prefs.prayer_lat ?? ''}
+                  onChange={(e) => void updatePrefs({ prayer_lat: e.target.value === '' ? null : Number(e.target.value) })}
+                  inputMode="decimal"
+                  placeholder="Latitude"
+                  className="input-field"
+                  aria-label="Latitude"
+                />
+                <input
+                  value={prefs.prayer_lng ?? ''}
+                  onChange={(e) => void updatePrefs({ prayer_lng: e.target.value === '' ? null : Number(e.target.value) })}
+                  inputMode="decimal"
+                  placeholder="Longitude"
+                  className="input-field"
+                  aria-label="Longitude"
+                />
+              </div>
+              {prefsBusy && <p className="text-xs text-gray-400">Saving…</p>}
+            </div>
+          </>
+        )}
+      </Section>
+
       <Section eyebrow="Learning">
         <Row icon={BookOpenText} title="Qur'an reader" subtitle="Read, translate, listen" to="/islamic/quran/read" />
         <Row icon={ScrollText} title="Hadith library" subtitle="Four verified collections" to="/islamic/hadith" />
@@ -241,4 +474,37 @@ export default function SettingsPage() {
       </Section>
     </div>
   );
+}
+
+const COMMON_TIMEZONES = [
+  'UTC',
+  'Africa/Lagos',
+  'Africa/Cairo',
+  'Africa/Nairobi',
+  'Africa/Johannesburg',
+  'Europe/London',
+  'Europe/Paris',
+  'Europe/Istanbul',
+  'Asia/Dubai',
+  'Asia/Karachi',
+  'Asia/Dhaka',
+  'Asia/Jakarta',
+  'Asia/Kuala_Lumpur',
+  'Asia/Manila',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'America/Toronto',
+  'Australia/Sydney',
+];
+
+function timezones(): string[] {
+  let local = '';
+  try {
+    local = Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
+  } catch {
+    local = '';
+  }
+  return [...new Set([local, ...COMMON_TIMEZONES].filter(Boolean))];
 }

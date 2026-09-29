@@ -29,6 +29,17 @@ class User extends Authenticatable implements MustVerifyEmail
         'banned_at',
         'ban_reason',
         'last_seen_at',
+        'reminder_enabled',
+        'reminder_time',
+        'reminder_timezone',
+        'remind_quran',
+        'remind_hadith',
+        'remind_salah',
+        'prayer_lat',
+        'prayer_lng',
+        'prayer_label',
+        'last_reminder_date',
+        'last_salah_key',
     ];
 
     protected $hidden = [

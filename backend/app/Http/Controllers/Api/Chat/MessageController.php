@@ -134,6 +134,16 @@ class MessageController extends Controller
                 // not make the sender retry and create a duplicate message.
                 report($exception);
             }
+
+            // Nudge offline devices only: anyone active gets the message
+            // instantly over the socket already. Push is the fallback.
+            try {
+                if (! $recipient->is_online) {
+                    \App\Jobs\SendPushTickle::dispatch($recipient->id);
+                }
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
         }
 
         try {

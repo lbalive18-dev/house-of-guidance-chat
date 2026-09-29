@@ -32,6 +32,14 @@ class SendBroadcastNotification implements ShouldQueue
             ->when($this->audience === 'admins', fn ($q) => $q->where('role', 'admin'))
             ->chunk(200, function ($users) {
                 Notification::send($users, new BroadcastNotification($this->title, $this->body, $this->senderName));
+
+                foreach ($users as $user) {
+                    try {
+                        SendPushTickle::dispatch($user->id);
+                    } catch (\Throwable $exception) {
+                        report($exception);
+                    }
+                }
             });
     }
 }

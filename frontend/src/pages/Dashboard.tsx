@@ -18,6 +18,7 @@ import DailyHadithCard from '@/components/islamic/DailyHadithCard';
 import IslamicQuickLinks from '@/components/islamic/IslamicQuickLinks';
 import CommunityQuickLinks from '@/components/hog/CommunityQuickLinks';
 import PwaInstallPrompt from '@/components/pwa/PwaInstallPrompt';
+import PushPromptBanner from '@/components/pwa/PushPromptBanner';
 
 export default function Dashboard() {
   const user = useAuthStore((s) => s.user);
@@ -113,6 +114,9 @@ export default function Dashboard() {
       <main className="mx-auto max-w-6xl space-y-8 px-4 py-6 md:px-8 md:py-8">
         <div className="animate-page-enter" style={{ animationDelay: '60ms' }}>
           <PwaInstallPrompt compact />
+        </div>
+        <div className="animate-page-enter" style={{ animationDelay: '90ms' }}>
+          <PushPromptBanner />
         </div>
 
         {/* Worship shortcuts */}

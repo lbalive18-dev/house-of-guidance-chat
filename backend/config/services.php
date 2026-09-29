@@ -13,4 +13,10 @@ return [
         'key' => env('BREVO_API_KEY'),
         'base_url' => env('BREVO_API_URL', 'https://api.brevo.com/v3'),
     ],
+
+    'webpush' => [
+        'public_key' => env('WEBPUSH_VAPID_PUBLIC'),
+        'private_key' => env('WEBPUSH_VAPID_PRIVATE'),
+        'subject' => env('WEBPUSH_SUBJECT', env('MAIL_FROM_ADDRESS', 'mailto:noreply@houseofguidance.org')),
+    ],
 ];

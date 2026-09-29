@@ -30,3 +30,7 @@ Artisan::command('hog:make-admin {email}', function (string $email) {
 // warm around the clock; the 120s heartbeat threshold still bounds how
 // stale a seat can get once a prune pass runs.
 Schedule::command('calls:prune-stale')->everyFifteenMinutes();
+
+// Daily Quran/Hadith nudges + prayer-time reminders. Idempotent per user
+// and day, so free-tier sleep gaps only delay — never duplicate — pushes.
+Schedule::command('reminders:dispatch')->everyFiveMinutes();
