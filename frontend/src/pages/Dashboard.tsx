@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import {
   ArrowRight,
   BookOpen,
+  MailWarning,
   PlayCircle,
   Plus,
   Sparkles,
@@ -112,6 +113,19 @@ export default function Dashboard() {
       </section>
 
       <main className="mx-auto max-w-6xl space-y-8 px-4 py-6 md:px-8 md:py-8">
+        {!user.email_verified_at && (
+          <Link
+            to="/verify-email"
+            className="flex items-center gap-3 rounded-2xl border border-secondary/30 bg-secondary-50 px-4 py-3 text-sm text-secondary-800 transition hover:-translate-y-0.5 dark:border-secondary-800 dark:bg-secondary-900/20 dark:text-secondary-200"
+          >
+            <MailWarning className="h-5 w-5 shrink-0" />
+            <span className="min-w-0 flex-1">
+              <strong className="block">Verify your email to unlock reminders</strong>
+              <span className="block truncate text-xs opacity-80">Calls, messages and daily nudges need a verified address.</span>
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0" />
+          </Link>
+        )}
         <div className="animate-page-enter" style={{ animationDelay: '60ms' }}>
           <PwaInstallPrompt compact />
         </div>

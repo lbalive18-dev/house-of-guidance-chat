@@ -26,12 +26,13 @@ import { usePwaInstall } from '@/hooks/usePwaInstall';
 import {
   disablePush,
   enablePush,
+  fetchPushStatus,
   fetchReminderPreferences,
   getPushSubscription,
   isPushSupported,
   pushPermission,
   saveReminderPreferences,
-  sendTestPush,
+  type PushStatus,
   type ReminderPreferences,
 } from '@/lib/push';
 import { apiErrorMessage } from '@/lib/apiError';
@@ -152,6 +153,7 @@ export default function SettingsPage() {
   const [pushOn, setPushOn] = useState(false);
   const [pushState, setPushState] = useState<'checking' | 'on' | 'off' | 'blocked' | 'unsupported'>('checking');
   const [pushBusy, setPushBusy] = useState(false);
+  const [serverStatus, setServerStatus] = useState<PushStatus | null>(null);
   const [prefs, setPrefs] = useState<ReminderPreferences | null>(null);
   const [prefsBusy, setPrefsBusy] = useState(false);
   const [locBusy, setLocBusy] = useState(false);
@@ -170,6 +172,7 @@ export default function SettingsPage() {
       setPushState(sub ? 'on' : 'off');
     });
     void fetchReminderPreferences().then(setPrefs);
+    void fetchPushStatus().then(setServerStatus);
   }, []);
 
   const handlePushToggle = async () => {
@@ -196,11 +199,6 @@ export default function SettingsPage() {
     } finally {
       setPushBusy(false);
     }
-  };
-
-  const handleTestPush = async () => {
-    const ok = await sendTestPush();
-    toast[ok ? 'success' : 'error'](ok ? 'Test sent — watch for it in a few seconds.' : 'Could not send the test.');
   };
 
   const updatePrefs = async (patch: Partial<ReminderPreferences>) => {
@@ -338,12 +336,15 @@ export default function SettingsPage() {
               }
               right={<Toggle on={pushOn} onToggle={() => void handlePushToggle()} label="Push on this device" />}
             />
-            {pushOn && (
+            {pushOn && serverStatus && (
               <Row
-                icon={Bell}
-                title="Send a test"
-                subtitle="Prove the whole chain works right now"
-                onClick={() => void handleTestPush()}
+                icon={serverStatus.server_ready ? ShieldCheck : Bell}
+                title={serverStatus.server_ready ? 'Delivery ready' : 'Delivery not ready yet'}
+                subtitle={
+                  serverStatus.server_ready
+                    ? `${serverStatus.devices} ${serverStatus.devices === 1 ? 'device' : 'devices'} registered — close the app and ask someone to message you`
+                    : 'The server is still being set up — reminders will appear inside the app meanwhile'
+                }
               />
             )}
           </>

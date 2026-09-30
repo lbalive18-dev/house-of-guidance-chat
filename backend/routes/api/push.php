@@ -20,5 +20,5 @@ Route::middleware('auth:sanctum')->prefix('push')->group(function () {
     Route::get('/inbox', [PushController::class, 'inbox']);
     Route::get('/preferences', [PushController::class, 'preferences']);
     Route::put('/preferences', [PushController::class, 'updatePreferences']);
-    Route::post('/test', [PushController::class, 'test']);
+    Route::get('/status', [PushController::class, 'status']);
 });

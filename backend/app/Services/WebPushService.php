@@ -67,7 +67,19 @@ class WebPushService
                 return false;
             }
 
-            return $response->successful();
+            if (! $response->successful()) {
+                // Never silent: log the push-service verdict (status + host
+                // only — no tokens, keys, or endpoints) so handshake failures
+                // like a mismatched VAPID key become diagnosable.
+                Log::warning('Web push rejected by push service.', [
+                    'status' => $response->status(),
+                    'host' => parse_url($subscription->endpoint, PHP_URL_HOST),
+                ]);
+
+                return false;
+            }
+
+            return true;
         } catch (\Throwable $exception) {
             Log::warning('Web push tickle failed.', [
                 'subscription_id' => $subscription->id,
@@ -129,22 +141,17 @@ class WebPushService
     }
 
     /**
-     * Wrap a raw P-256 scalar in a SEC1 EC PRIVATE KEY PEM envelope.
+     * Wrap a raw P-256 scalar in a minimal SEC1 EC PRIVATE KEY envelope.
      *
-     * OpenSSL signs with the private scalar; the embedded public point is
-     * a placeholder (the generator) and is never used — the real public
-     * key travels separately as the VAPID `k` parameter.
+     * The public point is intentionally omitted: OpenSSL derives it from
+     * the scalar on load, so there is no embedded point that could ever
+     * mismatch. The real public key travels separately as the VAPID `k`
+     * parameter; it is only used by the push service, never for signing.
      */
     protected function sec1Pem(string $d): string
     {
-        $generator = hex2bin(
-            '046B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296'
-            .'4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5'
-        );
-
-        $der = "\x30\x77\x02\x01\x01\x04\x20".$d
-            ."\xA0\x0A\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07"
-            ."\xA1\x44\x03\x42\x00".$generator;
+        $der = "\x30\x31\x02\x01\x01\x04\x20".$d
+            ."\xA0\x0A\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07";
 
         return "-----BEGIN EC PRIVATE KEY-----\n".chunk_split(base64_encode($der), 64, "\n").'-----END EC PRIVATE KEY-----';
     }

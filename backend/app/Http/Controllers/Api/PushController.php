@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\SendPushTickle;
 use App\Models\PushSubscription;
 use Illuminate\Http\Request;
 
@@ -129,19 +128,15 @@ class PushController extends Controller
     }
 
     /**
-     * Send yourself a tickle to prove the whole chain works.
+     * Plain-language readiness for Settings: is the server key present,
+     * and how many of this user's devices are registered? Booleans and
+     * counts only — nothing sensitive ever leaves the server.
      */
-    public function test(Request $request)
+    public function status(Request $request)
     {
-        $request->user()->notify(new \App\Notifications\ReminderNotification([
-            'type' => 'test',
-            'title' => 'Notifications are working',
-            'body' => 'This is how reminders, messages, and calls will reach you.',
-            'url' => '/',
-        ]));
-
-        SendPushTickle::dispatch($request->user()->id);
-
-        return response()->json(['message' => 'Test notification sent. It should arrive within seconds.']);
+        return response()->json([
+            'server_ready' => trim((string) config('services.webpush.private_key')) !== '',
+            'devices' => PushSubscription::query()->where('user_id', $request->user()->id)->count(),
+        ]);
     }
 }

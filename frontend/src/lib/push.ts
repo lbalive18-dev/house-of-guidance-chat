@@ -90,12 +90,17 @@ export async function disablePush(): Promise<boolean> {
   }
 }
 
-export async function sendTestPush(): Promise<boolean> {
+export interface PushStatus {
+  server_ready: boolean;
+  devices: number;
+}
+
+export async function fetchPushStatus(): Promise<PushStatus | null> {
   try {
-    await api.post('/api/push/test');
-    return true;
+    const { data } = await api.get<PushStatus>('/api/push/status');
+    return data;
   } catch {
-    return false;
+    return null;
   }
 }
 
