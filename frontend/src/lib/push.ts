@@ -93,6 +93,7 @@ export async function disablePush(): Promise<boolean> {
 export interface PushStatus {
   server_ready: boolean;
   devices: number;
+  last_attempt: { outcome: string; at: string } | null;
 }
 
 export async function fetchPushStatus(): Promise<PushStatus | null> {

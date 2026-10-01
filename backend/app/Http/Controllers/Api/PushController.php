@@ -137,6 +137,7 @@ class PushController extends Controller
         return response()->json([
             'server_ready' => trim((string) config('services.webpush.private_key')) !== '',
             'devices' => PushSubscription::query()->where('user_id', $request->user()->id)->count(),
+            'last_attempt' => \App\Services\WebPushService::lastAttemptFor($request->user()->id),
         ]);
     }
 }

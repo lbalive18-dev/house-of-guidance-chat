@@ -340,11 +340,7 @@ export default function SettingsPage() {
               <Row
                 icon={serverStatus.server_ready ? ShieldCheck : Bell}
                 title={serverStatus.server_ready ? 'Delivery ready' : 'Delivery not ready yet'}
-                subtitle={
-                  serverStatus.server_ready
-                    ? `${serverStatus.devices} ${serverStatus.devices === 1 ? 'device' : 'devices'} registered — close the app and ask someone to message you`
-                    : 'The server is still being set up — reminders will appear inside the app meanwhile'
-                }
+                subtitle={deliveryLine(serverStatus)}
               />
             )}
           </>
@@ -477,8 +473,26 @@ export default function SettingsPage() {
   );
 }
 
-const COMMON_TIMEZONES = [
-  'UTC',
+function deliveryLine(status: PushStatus): string {
+  const devices = `${status.devices} ${status.devices === 1 ? 'device' : 'devices'} registered`;
+  if (!status.server_ready) {
+    return 'The server is still being set up — reminders will appear inside the app meanwhile';
+  }
+  switch (status.last_attempt?.outcome) {
+    case 'delivered':
+      return `${devices} — last push handed over fine. Close the app and ask someone to message you`;
+    case 'rejected':
+      return `${devices} — the push service refused the last one. The server key likely mismatches; tell the admin`;
+    case 'expired':
+      return 'This device’s registration expired — switch push off and on again';
+    case 'error':
+      return `${devices} — last push could not reach the service. Try again in a minute`;
+    default:
+      return `${devices} — no push attempted yet. Close the app and ask someone to message you`;
+  }
+}
+
+const COMMON_TIMEZONES = [  'UTC',
   'Africa/Lagos',
   'Africa/Cairo',
   'Africa/Nairobi',

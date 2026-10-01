@@ -30,7 +30,7 @@ class WebPushService
         $subscriptions = PushSubscription::query()->where('user_id', $userId)->get();
 
         foreach ($subscriptions as $subscription) {
-            if ($this->sendTickle($subscription, $urgency, $ttl)) {
+            if ($this->sendTickle($subscription, $urgency, $ttl, $userId)) {
                 $accepted++;
             }
         }
@@ -43,9 +43,11 @@ class WebPushService
         return trim((string) config('services.webpush.private_key')) !== '';
     }
 
-    protected function sendTickle(PushSubscription $subscription, string $urgency, int $ttl): bool
+    protected function sendTickle(PushSubscription $subscription, string $urgency, int $ttl, ?int $userId = null): bool
     {
         if (! $this->isConfigured()) {
+            $this->recordAttempt($userId, 'not_configured');
+
             return false;
         }
 
@@ -63,6 +65,7 @@ class WebPushService
 
             if ($response->status() === 404 || $response->status() === 410) {
                 $subscription->delete();
+                $this->recordAttempt($userId, 'expired');
 
                 return false;
             }
@@ -75,9 +78,12 @@ class WebPushService
                     'status' => $response->status(),
                     'host' => parse_url($subscription->endpoint, PHP_URL_HOST),
                 ]);
+                $this->recordAttempt($userId, 'rejected');
 
                 return false;
             }
+
+            $this->recordAttempt($userId, 'delivered');
 
             return true;
         } catch (\Throwable $exception) {
@@ -85,8 +91,41 @@ class WebPushService
                 'subscription_id' => $subscription->id,
                 'status' => method_exists($exception, 'getCode') ? $exception->getCode() : null,
             ]);
+            $this->recordAttempt($userId, 'error');
 
             return false;
+        }
+    }
+
+    /**
+     * Last delivery receipt per user (outcome word + time only — nothing
+     * sensitive). Powers the plain-language status line in Settings.
+     */
+    protected function recordAttempt(?int $userId, string $outcome): void
+    {
+        if ($userId === null) {
+            return;
+        }
+
+        try {
+            \Illuminate\Support\Facades\Cache::put(
+                "push:last:{$userId}",
+                ['outcome' => $outcome, 'at' => now()->toIso8601String()],
+                now()->addDay()
+            );
+        } catch (\Throwable) {
+            // telemetry must never break delivery
+        }
+    }
+
+    public static function lastAttemptFor(int $userId): ?array
+    {
+        try {
+            $record = \Illuminate\Support\Facades\Cache::get("push:last:{$userId}");
+
+            return is_array($record) ? $record : null;
+        } catch (\Throwable) {
+            return null;
         }
     }
 
