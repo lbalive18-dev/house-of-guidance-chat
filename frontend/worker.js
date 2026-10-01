@@ -63,4 +63,18 @@ export default {
 
     return env.ASSETS.fetch(request);
   },
+
+  // Keep-warm heartbeat (see triggers.crons in wrangler.jsonc). Hits the
+  // cheap health endpoint so Render stays awake for pushes and messages.
+  async scheduled(event, env, ctx) {
+    void event;
+    ctx.waitUntil(
+      fetch(`${env.BACKEND_URL}/api/ping`, {
+        headers: { 'User-Agent': 'hog-keepwarm' },
+      }).then(
+        () => undefined,
+        () => undefined,
+      ),
+    );
+  },
 };

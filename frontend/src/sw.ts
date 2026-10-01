@@ -57,20 +57,35 @@ async function handlePush(): Promise<void> {
   }
 
   let inbox: InboxNotification | null = null;
-  try {
-    const response = await fetch('/api/push/inbox', {
-      credentials: 'include',
-      headers: { Accept: 'application/json' },
-    });
-    if (response.ok) {
-      const data = (await response.json()) as { notification: InboxNotification | null };
-      inbox = data.notification;
+  // The inbox row and the tickle race each other (row via queue, tickle
+  // direct for calls): retry briefly before falling back to a generic
+  // nudge so a push never dies silently on a slow first fetch.
+  for (let attempt = 0; attempt < 3 && !inbox; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 4000));
+    try {
+      const response = await fetch('/api/push/inbox', {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      if (response.ok) {
+        const data = (await response.json()) as { notification: InboxNotification | null };
+        inbox = data.notification;
+      }
+    } catch {
+      inbox = null;
     }
-  } catch {
-    inbox = null;
   }
 
-  if (!inbox) return;
+  if (!inbox) {
+    await self.registration.showNotification('House of Guidance', {
+      body: 'You have a new update — open the app to see it.',
+      icon: '/hog-logo.png',
+      badge: '/hog-logo.png',
+      tag: 'hog-fallback',
+      data: { url: '/' },
+    });
+    return;
+  }
 
   const isCall = inbox.kind === 'IncomingCallNotification';
   const options: NotificationOptions & {

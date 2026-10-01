@@ -184,6 +184,7 @@ class CallController extends Controller
 
         // Ring offline devices with an urgent push: the stored notification
         // is what their service worker renders, even with the app closed.
+        // Sent synchronously (not queued) so ringing starts instantly.
         foreach ($session->participants as $participant) {
             if ($participant->user_id === $user->id) {
                 continue;
@@ -192,8 +193,10 @@ class CallController extends Controller
                 continue;
             }
             try {
-                $participant->user?->notify(new \App\Notifications\IncomingCallNotification($session));
-                \App\Jobs\SendPushTickle::dispatch($participant->user_id, 'high', 300);
+                // notifyNow (not queued): the row must exist before the
+                // instant tickle below wakes the callee's device.
+                $participant->user?->notifyNow(new \App\Notifications\IncomingCallNotification($session));
+                app(\App\Services\WebPushService::class)->tickleUser($participant->user_id, 'high', 120);
             } catch (\Throwable $exception) {
                 report($exception);
             }

@@ -7,6 +7,13 @@
   "vars": {
     "BACKEND_URL": "https://house-of-guidance-chat.onrender.com",
   },
+  // Free-tier keep-warm: Render sleeps when idle, and every cold start
+  // adds up to a minute of lag to pushes and messages. This cron pings
+  // the backend's cheap health endpoint so it stays warm. Cron triggers
+  // are included in Cloudflare's free plan; no paid product involved.
+  "triggers": {
+    "crons": ["*/12 * * * *"],
+  },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

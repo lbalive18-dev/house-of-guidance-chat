@@ -93,7 +93,7 @@ class RemindersDispatch extends Command
         }
 
         $user->forceFill(['last_reminder_date' => $now->toDateString()])->save();
-        SendPushTickle::dispatch($user->id);
+        SendPushTickle::dispatch($user->id, 'normal', 7200);
     }
 
     protected function dailyVerseLine(): string
@@ -196,7 +196,7 @@ class RemindersDispatch extends Command
             ]));
 
             $user->forceFill(['last_salah_key' => $key])->save();
-            SendPushTickle::dispatch($user->id, 'high');
+            SendPushTickle::dispatch($user->id, 'high', 1800);
 
             return;
         }
