@@ -98,7 +98,10 @@ services:
       # Set to your own registered email in the Render dashboard.
       - key: FIRST_ADMIN_EMAIL
         sync: false
-      # Web Push (free VAPID standard) private key. The matching public key
-      # lives in frontend/.env.production. Never commit the private value.
+      # Web Push (free VAPID standard) keys. The public key is NOT a secret
+      # (browsers see it); the private key is — never commit it. Pushes are
+      # refused without BOTH halves matching the pair.
+      - key: WEBPUSH_VAPID_PUBLIC
+        sync: false
       - key: WEBPUSH_VAPID_PRIVATE
         sync: false

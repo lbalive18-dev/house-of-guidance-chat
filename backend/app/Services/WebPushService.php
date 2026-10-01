@@ -141,10 +141,16 @@ class WebPushService
         }
 
         $header = $this->base64Url(json_encode(['typ' => 'JWT', 'alg' => 'ES256']));
+        // Push services require an https: URL or mailto: contact — a bare
+        // address is rejected by strict ones, so normalize it here.
+        $subject = trim((string) config('services.webpush.subject'));
+        if (! str_contains($subject, ':')) {
+            $subject = 'mailto:'.$subject;
+        }
         $payload = $this->base64Url(json_encode([
             'aud' => $audience,
             'exp' => time() + 43200,
-            'sub' => trim((string) config('services.webpush.subject')),
+            'sub' => $subject,
         ]));
 
         $signingInput = $header.'.'.$payload;
