@@ -39,7 +39,6 @@ class RemindersDispatch extends Command
         User::query()
             ->where('is_banned', false)
             ->where('reminder_enabled', true)
-            ->whereNotNull('email_verified_at')
             ->where(function ($query) {
                 $query->where('remind_quran', true)->orWhere('remind_hadith', true);
             })
@@ -132,7 +131,6 @@ class RemindersDispatch extends Command
             ->where('is_banned', false)
             ->where('reminder_enabled', true)
             ->where('remind_salah', true)
-            ->whereNotNull('email_verified_at')
             ->whereNotNull('prayer_lat')
             ->whereNotNull('prayer_lng')
             ->chunkById(200, function ($users) use ($prayerTimes) {
