@@ -34,6 +34,7 @@ require __DIR__.'/api/islamic.php';
 require __DIR__.'/api/hog.php';
 require __DIR__.'/api/admin.php';
 require __DIR__.'/api/push.php';
+require __DIR__.'/api/noor.php';
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return new UserResource($request->user());

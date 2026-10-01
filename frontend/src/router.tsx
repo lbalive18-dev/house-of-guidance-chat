@@ -7,6 +7,7 @@ import GuestRoute from '@/components/auth/GuestRoute';
 import Dashboard from '@/pages/Dashboard';
 import ProfileSettings from '@/pages/ProfileSettings';
 import SettingsPage from '@/pages/SettingsPage';
+import NoorPage from '@/pages/NoorPage';
 import Chat from '@/pages/Chat';
 
 import Login from '@/pages/auth/Login';
@@ -90,6 +91,15 @@ export const router = createBrowserRouter([
         element: (
           <AppLayout>
             <SettingsPage />
+          </AppLayout>
+        ),
+      },
+
+      {
+        path: '/noor',
+        element: (
+          <AppLayout>
+            <NoorPage />
           </AppLayout>
         ),
       },

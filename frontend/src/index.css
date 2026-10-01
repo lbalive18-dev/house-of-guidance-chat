@@ -118,6 +118,29 @@ html {
   background-size: 20px 20px;
 }
 
+/* Noor assistant answers: book-like reading rhythm */
+.noor-answer {
+  font-size: 15.5px;
+  line-height: 1.85;
+  color: #1f2937;
+}
+
+.dark .noor-answer {
+  color: #e5e7eb;
+}
+
+.noor-answer p + p {
+  margin-top: 0.75rem;
+}
+
+.noor-answer strong {
+  color: #07382d;
+}
+
+.dark .noor-answer strong {
+  color: #e6ca74;
+}
+
 /* Frosted glass tiles — translucent, light-catching shortcut cards */
 .glass-tile {
   border-radius: 1.25rem;

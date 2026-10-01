@@ -113,6 +113,27 @@ export default function Dashboard() {
       </section>
 
       <main className="mx-auto max-w-6xl space-y-8 px-4 py-6 md:px-8 md:py-8">
+        {/* Noor — pinned assistant entry, visible the moment the app opens */}
+        <Link
+          to="/noor"
+          className="group relative flex items-center gap-4 overflow-hidden rounded-[1.75rem] border border-secondary/40 bg-gradient-to-r from-[#041b15] via-[#0a4a38] to-[#041b15] px-5 py-4 text-white shadow-[0_16px_44px_rgba(212,175,55,.22)] transition hover:-translate-y-0.5"
+        >
+          <span aria-hidden className="pointer-events-none absolute -right-10 -top-14 h-40 w-40 rounded-full bg-secondary/15 blur-3xl" />
+          <span className="hog-moon flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f3d877] to-[#d4af37] text-[#17352a] shadow-[0_0_24px_rgba(212,175,55,.5)]">
+            <Sparkles className="h-6 w-6" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] font-bold uppercase tracking-[0.22em] text-secondary-200">
+              Meet Noor <span className="font-arabic normal-case tracking-normal">نور</span>
+            </span>
+            <span className="block truncate text-sm font-semibold">
+              Ask anything — Islam, Qur’an, or this app, in any language
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-secondary px-4 py-2 text-xs font-bold text-[#17352a] transition group-hover:bg-secondary-200">
+            Ask <ArrowRight className="h-3.5 w-3.5" />
+          </span>
+        </Link>
         {!user.email_verified_at && (
           <Link
             to="/verify-email"

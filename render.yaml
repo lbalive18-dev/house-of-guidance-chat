@@ -105,3 +105,7 @@ services:
         sync: false
       - key: WEBPUSH_VAPID_PRIVATE
         sync: false
+      # Noor assistant (Groq free tier). The app works without it (local +
+      # cached answers); model answers need this key from console.groq.com.
+      - key: GROQ_API_KEY
+        sync: false
