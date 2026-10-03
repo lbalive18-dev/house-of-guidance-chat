@@ -36,6 +36,12 @@ class SendBroadcastNotification implements ShouldQueue
                 foreach ($users as $user) {
                     try {
                         SendPushTickle::dispatch($user->id, 'normal', 86400);
+                        SendFcmPush::dispatch($user->id, [
+                            'title' => $this->title,
+                            'body' => $this->body,
+                            'url' => '/',
+                            'tag' => 'broadcast',
+                        ]);
                     } catch (\Throwable $exception) {
                         report($exception);
                     }

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User } from '@/types/auth';
 import { fetchCurrentUser, logout as apiLogout } from '@/lib/authApi';
+import { unregisterNativePush } from '@/lib/native';
 
 interface AuthState {
   user: User | null;
@@ -31,6 +32,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await apiLogout();
     } finally {
+      // A signed-out device must stop receiving this account's pushes.
+      await unregisterNativePush();
       set({ user: null, status: 'unauthenticated' });
     }
   },

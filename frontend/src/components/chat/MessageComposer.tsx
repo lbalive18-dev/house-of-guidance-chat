@@ -6,6 +6,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { apiErrorMessage } from '@/lib/apiError';
 import { sendAttachmentMessage, sendTextMessage, sendTyping } from '@/lib/chatApi';
+import { enqueueOutbox, isOfflineError } from '@/lib/outbox';
 import { formatDuration } from '@/lib/format';
 import ReplyPreviewBar from '@/components/chat/ReplyPreviewBar';
 import type { ChatMessage, MessageType } from '@/types/chat';
@@ -21,11 +22,13 @@ export default function MessageComposer({
   replyingTo,
   onCancelReply,
   onMessageSent,
+  onQueued,
 }: {
   conversationId: number;
   replyingTo: ChatMessage | null;
   onCancelReply: () => void;
   onMessageSent: (message: ChatMessage) => void;
+  onQueued?: () => void;
 }) {
   const { theme } = useTheme();
   const [text, setText] = useState('');
@@ -67,8 +70,17 @@ export default function MessageComposer({
       onMessageSent(message);
       onCancelReply();
     } catch (error) {
-      toast.error(apiErrorMessage(error, 'Could not send your message.'));
-      setText(body);
+      // No connection: keep the text in the outbox and send it
+      // automatically when back online. Anything else is a real rejection.
+      if (isOfflineError(error)) {
+        enqueueOutbox({ conversationId, body, replyToId: replyingTo?.id });
+        onCancelReply();
+        onQueued?.();
+        toast.success('Saved — will send when you are back online.');
+      } else {
+        toast.error(apiErrorMessage(error, 'Could not send your message.'));
+        setText(body);
+      }
     } finally {
       setSending(false);
     }

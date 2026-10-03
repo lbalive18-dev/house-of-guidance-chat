@@ -36,9 +36,9 @@ services:
       - key: APP_URL
         value: https://house-of-guidance-chat.onrender.com
       - key: SANCTUM_STATEFUL_DOMAINS
-        value: house-of-guidance-chat.lbalive18.workers.dev
+        value: house-of-guidance-chat.lbalive18.workers.dev,localhost
       - key: CORS_ALLOWED_ORIGINS
-        value: https://house-of-guidance-chat.lbalive18.workers.dev
+        value: https://house-of-guidance-chat.lbalive18.workers.dev,http://localhost,capacitor://localhost
       - key: RUN_MIGRATIONS
         value: true
       # Seeds once on a fresh database only (guarded; safe to leave on).
@@ -109,6 +109,11 @@ services:
       - key: WEBPUSH_VAPID_PUBLIC
         sync: false
       - key: WEBPUSH_VAPID_PRIVATE
+        sync: false
+      # Firebase service-account JSON (free Spark plan) for native Android
+      # pushes. Paste the whole JSON from Firebase console → Project
+      # Settings → Service accounts → Generate new private key. Never commit.
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
         sync: false
       # Noor assistant (Groq free tier). The app works without it (local +
       # cached answers); model answers need this key from console.groq.com.

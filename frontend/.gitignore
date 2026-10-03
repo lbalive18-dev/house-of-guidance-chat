@@ -9,3 +9,5 @@ dist-ssr
 coverage
 .env.production
 .wrangler/
+# Firebase client config: real file comes from the CI secret at build time.
+android/app/google-services.json

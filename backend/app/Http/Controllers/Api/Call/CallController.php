@@ -197,6 +197,12 @@ class CallController extends Controller
                 // instant tickle below wakes the callee's device.
                 $participant->user?->notifyNow(new \App\Notifications\IncomingCallNotification($session));
                 app(\App\Services\WebPushService::class)->tickleUser($participant->user_id, 'high', 120);
+                \App\Jobs\SendFcmPush::dispatch($participant->user_id, [
+                    'title' => ($session->initiator?->name ?? 'Someone').' is calling',
+                    'body' => ($session->media === 'video' ? 'Video' : 'Audio').' call — tap to answer.',
+                    'url' => '/chat/'.$session->conversation_id,
+                    'tag' => 'call-'.$session->id,
+                ], 'high');
             } catch (\Throwable $exception) {
                 report($exception);
             }

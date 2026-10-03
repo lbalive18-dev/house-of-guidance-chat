@@ -18,7 +18,9 @@ import {
   fetchConversation,
   fetchMessages,
   markConversationRead,
+  sendTextMessage,
 } from '@/lib/chatApi';
+import { outboxFor, removeFromOutbox } from '@/lib/outbox';
 import type { ChatMessage, Conversation } from '@/types/chat';
 
 export default function Chat() {
@@ -171,6 +173,42 @@ export default function Chat() {
     appendOrReplace(message);
     requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }));
   };
+
+  // Offline outbox: text typed with no connection waits here and flushes
+  // automatically when the browser reports it is back online.
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const refreshPending = useCallback(() => {
+    setPendingCount(outboxFor(id).length);
+  }, [id]);
+
+  const flushOutbox = useCallback(async () => {
+    const queued = outboxFor(id);
+    if (queued.length === 0) return;
+    for (const item of queued) {
+      try {
+        const message = await sendTextMessage(id, { body: item.body, reply_to_id: item.replyToId });
+        appendOrReplace(message);
+        removeFromOutbox(item.id);
+      } catch {
+        // still offline — stop and wait for the next online event
+        break;
+      }
+    }
+    refreshPending();
+  }, [id, appendOrReplace, refreshPending]);
+
+  useEffect(() => {
+    refreshPending();
+    const onOnline = () => void flushOutbox();
+    const onChange = () => refreshPending();
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onChange);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onChange);
+    };
+  }, [flushOutbox, refreshPending]);
 
   // Light recovery poll: if a Reverb message event is missed while the
   // socket reconnects, pick up the latest page without duplicating or
@@ -364,11 +402,18 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
+      {pendingCount > 0 && (
+        <div className="border-t border-secondary/25 bg-secondary-50 px-4 py-2 text-center text-xs font-semibold text-secondary-800 dark:bg-secondary-900/20 dark:text-secondary-200">
+          {pendingCount === 1 ? '1 message' : `${pendingCount} messages`} waiting — will send when you are back online.
+        </div>
+      )}
+
       <MessageComposer
         conversationId={id}
         replyingTo={replyingTo}
         onCancelReply={() => setReplyingTo(null)}
         onMessageSent={handleMessageSent}
+        onQueued={refreshPending}
       />
     </div>
   );

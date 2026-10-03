@@ -140,6 +140,18 @@ class MessageController extends Controller
             try {
                 if (! $recipient->is_online) {
                     \App\Jobs\SendPushTickle::dispatch($recipient->id);
+                    \App\Jobs\SendFcmPush::dispatch($recipient->id, [
+                        'title' => $message->sender?->name ?? 'New message',
+                        'body' => $message->body ?: match ($message->type) {
+                            'image' => 'Sent an image',
+                            'file' => 'Sent a file',
+                            'pdf' => 'Sent a PDF',
+                            'voice' => 'Sent a voice note',
+                            default => 'Sent you a new message',
+                        },
+                        'url' => '/chat/'.$message->conversation_id,
+                        'tag' => 'chat-'.$message->conversation_id,
+                    ]);
                 }
             } catch (\Throwable $exception) {
                 report($exception);

@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->prefix('push')->group(function () {
     Route::post('/subscriptions', [PushController::class, 'subscribe']);
     Route::delete('/subscriptions', [PushController::class, 'unsubscribe']);
+    Route::post('/fcm-token', [PushController::class, 'storeFcmToken']);
     Route::get('/inbox', [PushController::class, 'inbox']);
     Route::get('/preferences', [PushController::class, 'preferences']);
     Route::put('/preferences', [PushController::class, 'updatePreferences']);

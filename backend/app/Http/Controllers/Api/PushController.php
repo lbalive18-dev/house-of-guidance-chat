@@ -36,15 +36,47 @@ class PushController extends Controller
     public function unsubscribe(Request $request)
     {
         $validated = $request->validate([
-            'endpoint' => ['required', 'string', 'max:2000'],
+            'endpoint' => ['sometimes', 'string', 'max:2000'],
+            'fcm_token' => ['sometimes', 'string', 'max:500'],
         ]);
 
-        PushSubscription::query()
-            ->where('user_id', $request->user()->id)
-            ->where('endpoint', $validated['endpoint'])
-            ->delete();
+        $query = PushSubscription::query()->where('user_id', $request->user()->id);
+
+        if (! empty($validated['fcm_token'] ?? null)) {
+            $query->where('fcm_token', $validated['fcm_token'])->delete();
+        } elseif (! empty($validated['endpoint'] ?? null)) {
+            $query->where('endpoint', $validated['endpoint'])->delete();
+        } else {
+            return response()->json(['message' => 'Nothing to remove.'], 422);
+        }
 
         return response()->json(['message' => 'Push notifications disabled on this device.']);
+    }
+
+    /**
+     * Register a native (FCM) device token. One row per token; re-installs
+     * simply refresh the same record.
+     */
+    public function storeFcmToken(Request $request)
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string', 'max:500'],
+            'platform' => ['sometimes', 'in:android'],
+        ]);
+
+        PushSubscription::query()->updateOrCreate(
+            ['fcm_token' => $validated['token']],
+            [
+                'user_id' => $request->user()->id,
+                'endpoint' => 'fcm://'.$validated['token'],
+                'p256dh_key' => '',
+                'auth_token' => '',
+                'platform' => $validated['platform'] ?? 'android',
+                'user_agent' => substr((string) $request->userAgent(), 0, 255),
+            ]
+        );
+
+        return response()->json(['message' => 'Device registered for notifications.']);
     }
 
     /**

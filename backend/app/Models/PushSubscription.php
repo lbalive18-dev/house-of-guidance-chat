@@ -13,6 +13,8 @@ class PushSubscription extends Model
         'p256dh_key',
         'auth_token',
         'user_agent',
+        'platform',
+        'fcm_token',
     ];
 
     public function user(): BelongsTo

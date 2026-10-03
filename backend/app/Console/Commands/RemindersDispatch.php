@@ -74,22 +74,26 @@ class RemindersDispatch extends Command
 
         if ($user->remind_quran) {
             $verse = $this->dailyVerseLine();
-            $user->notify(new ReminderNotification([
+            $content = [
                 'type' => 'quran',
                 'title' => 'Did you read Qur’an today?',
                 'body' => 'Open a few verses now. '.$verse,
                 'url' => '/islamic/quran/read',
-            ]));
+            ];
+            $user->notify(new ReminderNotification($content));
+            \App\Jobs\SendFcmPush::dispatch($user->id, $content + ['tag' => 'reminder-quran-'.$now->toDateString()]);
         }
 
         if ($user->remind_hadith) {
             $line = $this->dailyHadithLine();
-            $user->notify(new ReminderNotification([
+            $content = [
                 'type' => 'hadith',
                 'title' => 'Hadith of the day',
                 'body' => $line,
                 'url' => '/islamic/hadith',
-            ]));
+            ];
+            $user->notify(new ReminderNotification($content));
+            \App\Jobs\SendFcmPush::dispatch($user->id, $content + ['tag' => 'reminder-hadith-'.$now->toDateString()]);
         }
 
         $user->forceFill(['last_reminder_date' => $now->toDateString()])->save();
@@ -192,17 +196,19 @@ class RemindersDispatch extends Command
                 continue;
             }
 
-            $user->notify(new ReminderNotification([
+            $content = [
                 'type' => 'salah',
                 'title' => "{$name} prayer",
                 'body' => $diffMinutes <= 0
                     ? "It is time for {$name}".($user->prayer_label ? " ({$user->prayer_label})" : '').'.'
                     : "{$name} begins in ".max(1, (int) round($diffMinutes)).' min'.($user->prayer_label ? " ({$user->prayer_label})" : '').'.',
                 'url' => '/islamic/prayer-times',
-            ]));
+            ];
+            $user->notify(new ReminderNotification($content));
 
             $user->forceFill(['last_salah_key' => $key])->save();
             SendPushTickle::dispatch($user->id, 'high', 1800);
+            \App\Jobs\SendFcmPush::dispatch($user->id, $content + ['tag' => 'reminder-salah-'.$key], 'high');
 
             return;
         }
