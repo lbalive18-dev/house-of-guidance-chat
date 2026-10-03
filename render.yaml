@@ -71,10 +71,15 @@ services:
         value: true
       - key: SESSION_SAME_SITE
         value: none
+      # Database-backed cache + queue: immune to external Redis quotas.
+      # (An exhausted Redis command quota was 500-ing throttled routes like
+      # login, plus everything cached: verses, hadiths, prayer times.)
+      # To opt back into Redis, set CACHE_STORE=redis, QUEUE_CONNECTION=redis
+      # and a working REDIS_URL below.
       - key: CACHE_STORE
-        value: redis
+        value: database
       - key: QUEUE_CONNECTION
-        value: redis
+        value: database
       - key: REDIS_URL
         sync: false
       - key: MAIL_MAILER
