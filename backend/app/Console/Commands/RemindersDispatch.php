@@ -146,17 +146,23 @@ class RemindersDispatch extends Command
 
     protected function maybeSalahFor(User $user, PrayerTimeService $prayerTimes): void
     {
-        try {
-            $tz = $user->reminder_timezone ?: 'UTC';
-            $now = Carbon::now($tz);
-        } catch (\Throwable) {
-            return;
-        }
-
         $result = $prayerTimes->forCoordinates((float) $user->prayer_lat, (float) $user->prayer_lng);
 
         if (! $result || empty($result['timings'])) {
             return;
+        }
+
+        // Aladhan times are expressed in the LOCATION's own timezone — parse
+        // them there, not in the user's preference zone. Mixing the two is
+        // what used to shift reminders by whole hours.
+        $prayerTz = $result['meta']['timezone'] ?? null;
+
+        try {
+            $now = Carbon::now($prayerTz ?: $user->reminder_timezone ?: 'UTC');
+            $tz = $now->timezoneName;
+        } catch (\Throwable) {
+            $now = Carbon::now('UTC');
+            $tz = 'UTC';
         }
 
         foreach (['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as $name) {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  ArrowLeft,
   BookOpen,
   Bookmark,
   BookmarkCheck,
@@ -220,9 +221,14 @@ export default function QuranPage() {
         <div className="relative mx-auto max-w-7xl px-5 py-10 md:px-8 md:py-14">
           <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
             <div className="max-w-2xl">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-medium">
-                <Sparkles className="h-4 w-4" />
-                House of Guidance Quran
+              <div className="mb-4 flex items-center gap-2">
+                <Link to="/" className="rounded-full bg-white/10 p-2 transition hover:bg-white/20" aria-label="Back to home">
+                  <ArrowLeft className="h-5 w-5" />
+                </Link>
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-medium">
+                  <Sparkles className="h-4 w-4" />
+                  House of Guidance Quran
+                </span>
               </div>
 
               <h1 className="text-4xl font-bold md:text-5xl">

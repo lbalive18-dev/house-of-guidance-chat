@@ -154,6 +154,16 @@ export default function ActiveCallView({ call, currentUserId, currentUserName, c
 
       {error && <p className="text-center text-sm text-red-600">{error}</p>}
 
+      {(viewState === 'connecting' && error) && (
+        <button
+          type="button"
+          onClick={() => void call.retryConnection()}
+          className="mx-auto rounded-2xl border border-primary/30 px-6 py-2.5 text-sm font-bold text-primary transition hover:bg-primary-50 dark:hover:bg-primary-900/30"
+        >
+          Retry connection
+        </button>
+      )}
+
       <CallControls
         isMuted={isMuted}
         isCameraOff={isCameraOff}

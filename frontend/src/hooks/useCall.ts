@@ -1007,6 +1007,52 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
     }
   }, [remotePeers, viewState]);
 
+  /**
+   * Connecting watchdog: media flowing is the only proof of a call. If
+   * nothing connects within 35s, say so plainly with a retry path instead
+   * of spinning on "Connecting…" forever.
+   */
+  const connectingSinceRef = useRef(0);
+
+  useEffect(() => {
+    if (viewState !== 'connecting') {
+      connectingSinceRef.current = 0;
+      return;
+    }
+    if (!connectingSinceRef.current) connectingSinceRef.current = Date.now();
+    const timer = window.setTimeout(() => {
+      if (!mountedRef.current) return;
+      if (sessionRef.current && viewState === 'connecting') {
+        const peerIds = transportRef.current?.peerIds() ?? [];
+        const anyConnected = peerIds.some((id) => transportRef.current?.connectionState(id) === 'connected');
+        if (!anyConnected) {
+          setError(
+            'Still ringing through… no media yet. The other side may have a weak connection, or this network may block direct calls. Wait a little, or retry.',
+          );
+        }
+      }
+    }, 35000);
+    return () => window.clearTimeout(timer);
+  }, [viewState, session?.id]);
+
+  /**
+   * Manual recovery: re-sync the session and re-offer to every joined
+   * peer. Safe to hammer — stable negotiations are skipped.
+   */
+  const retryConnection = useCallback(async () => {
+    const current = sessionRef.current;
+    if (!current) return;
+    setError('');
+    connectingSinceRef.current = 0;
+    try {
+      await processPendingOffers();
+      const fresh = await refreshSession(current.id);
+      if (fresh && mountedRef.current) await offerToJoinedPeers(fresh);
+    } catch {
+      if (mountedRef.current) setError('Retry failed. Check your connection and try again.');
+    }
+  }, [offerToJoinedPeers, processPendingOffers, refreshSession]);
+
   // ---- heartbeat -------------------------------------------------------------
 
   useEffect(() => {
@@ -1078,6 +1124,7 @@ export function useCall({ conversationId, currentUserId }: UseCallOptions) {
     toggleCamera,
     dismiss,
     refreshSession,
+    retryConnection,
   };
 }
 

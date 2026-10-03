@@ -6,8 +6,8 @@ import {
   BookOpen,
   MailWarning,
   PlayCircle,
-  Plus,
   Sparkles,
+  Users,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import Avatar from '@/components/ui/Avatar';
@@ -37,9 +37,12 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#f4f7f3] dark:bg-slate-950">
-      {/* HERO — the first screen: greeting, search, night-sky welcome */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#041b15] via-[#07382d] to-[#0a4a38] text-white">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+      {/* HERO — the first screen: greeting, search, night-sky welcome.
+          NOTE: no overflow-hidden here — the people-search dropdown must
+          overflow visibly above the cards below. Decorations clip inside
+          their own absolute layer instead. */}
+      <section className="relative bg-gradient-to-br from-[#041b15] via-[#07382d] to-[#0a4a38] text-white">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-300/10 blur-3xl" />
           <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-secondary/10 blur-3xl" />
           <div className="geometric-motif-light absolute inset-0 opacity-60" />
@@ -88,19 +91,21 @@ export default function Dashboard() {
             Chat, learn, and grow with the House of Guidance community — all in one place.
           </p>
 
-          {/* SEARCH — top of the home screen */}
-          <div className="animate-page-enter mt-5 flex items-center gap-2" style={{ animationDelay: '140ms' }}>
+          {/* SEARCH — top of the home screen. z-30 so results paint above
+              every card below; the group button opens group creation. */}
+          <div className="animate-page-enter relative z-30 mt-5 flex items-center gap-2" style={{ animationDelay: '140ms' }}>
             <div className="min-w-0 flex-1 rounded-2xl border border-white/15 bg-white/10 p-1.5 shadow-lg backdrop-blur-xl">
               <SearchUsers />
             </div>
             <button
               type="button"
               onClick={() => setShowCreateGroup(true)}
-              aria-label="New group"
-              title="New group"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-secondary font-bold text-[#17352a] shadow-[0_8px_24px_rgba(212,175,55,.35)] transition hover:-translate-y-0.5 hover:bg-secondary-200"
+              aria-label="Create group"
+              title="Create group"
+              className="flex h-12 shrink-0 items-center gap-1.5 rounded-2xl bg-secondary px-3.5 font-bold text-[#17352a] shadow-[0_8px_24px_rgba(212,175,55,.35)] transition hover:-translate-y-0.5 hover:bg-secondary-200 sm:px-4"
             >
-              <Plus className="h-5 w-5" />
+              <Users className="h-5 w-5" />
+              <span className="hidden text-sm sm:inline">Group</span>
             </button>
           </div>
         </div>

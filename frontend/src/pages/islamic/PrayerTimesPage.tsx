@@ -121,10 +121,17 @@ export default function PrayerTimesPage() {
 
       {!loading && times && (
         <div className="card px-5 py-5">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {times.date.readable}
-            </p>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {times.date.readable}
+              </p>
+              {typeof times.meta.timezone === 'string' && times.meta.timezone && (
+                <p className="mt-0.5 truncate text-xs text-gray-400 dark:text-gray-500">
+                  {times.meta.timezone.replace(/_/g, ' ')} time
+                </p>
+              )}
+            </div>
 
             <ShareReminderButton text={shareText} />
           </div>
