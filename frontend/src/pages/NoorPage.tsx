@@ -34,7 +34,12 @@ function loadHistory(): NoorMessage[] {
   try {
     const raw = window.localStorage.getItem(HISTORY_KEY);
     const parsed = raw ? (JSON.parse(raw) as NoorMessage[]) : [];
-    return Array.isArray(parsed) ? parsed.slice(-40) : [];
+    if (!Array.isArray(parsed)) return [];
+    // Normalize older entries that predate sources/history fields.
+    return parsed.slice(-40).map((msg) => ({
+      ...msg,
+      sources: Array.isArray(msg.sources) ? msg.sources : [],
+    }));
   } catch {
     return [];
   }

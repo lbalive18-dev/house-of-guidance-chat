@@ -102,7 +102,7 @@ export default function MessageBubble({
               : 'rounded-tl-sm bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50'
           }`}
         >
-          {message.attachments.map((attachment) => (
+          {(message.attachments ?? []).map((attachment) => (
             <div key={attachment.id} className={message.body ? 'mb-2' : ''}>
               <AttachmentView attachment={attachment} type={message.type} />
             </div>

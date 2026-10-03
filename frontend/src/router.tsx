@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 
 import AppLayout from '@/components/layout/AppLayout';
+import RouteError from '@/components/ui/RouteError';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import GuestRoute from '@/components/auth/GuestRoute';
 
@@ -40,6 +41,7 @@ import AdminAnalyticsPage from '@/pages/admin/AdminAnalyticsPage';
 export const router = createBrowserRouter([
   {
     element: <GuestRoute />,
+    errorElement: <RouteError />,
     children: [
       {
         path: '/login',
@@ -62,6 +64,7 @@ export const router = createBrowserRouter([
 
   {
     element: <ProtectedRoute />,
+    errorElement: <RouteError />,
     children: [
       {
         path: '/',
