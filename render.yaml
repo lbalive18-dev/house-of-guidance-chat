@@ -38,7 +38,7 @@ services:
       - key: SANCTUM_STATEFUL_DOMAINS
         value: house-of-guidance-chat.lbalive18.workers.dev,localhost
       - key: CORS_ALLOWED_ORIGINS
-        value: https://house-of-guidance-chat.lbalive18.workers.dev,http://localhost,capacitor://localhost
+        value: https://house-of-guidance-chat.lbalive18.workers.dev,http://localhost,https://localhost,capacitor://localhost
       - key: RUN_MIGRATIONS
         value: true
       # Seeds once on a fresh database only (guarded; safe to leave on).

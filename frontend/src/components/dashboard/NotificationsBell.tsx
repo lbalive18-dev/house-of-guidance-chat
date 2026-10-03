@@ -39,7 +39,8 @@ export default function NotificationsBell() {
     if (!open) {
       setLoading(true);
       fetchNotifications()
-        .then((res) => setNotifications(res.data))
+        .then((res) => setNotifications(Array.isArray(res.data) ? res.data : []))
+        .catch(() => setNotifications([]))
         .finally(() => setLoading(false));
     }
   };

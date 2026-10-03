@@ -10,7 +10,8 @@ export default function ConversationList() {
 
   useEffect(() => {
     fetchConversations()
-      .then((res) => setConversations(res.data))
+      .then((res) => setConversations(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setConversations([]))
       .finally(() => setLoading(false));
   }, []);
 
